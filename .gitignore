@@ -1,0 +1,148 @@
+# ================================================
+# CourseSystem Monorepo - .gitignore
+# 前后端合并项目：Vue3 (Vite) + Spring Boot (Maven)
+# ================================================
+
+# ================================================
+# 1. 操作系统级别
+# ================================================
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+.AppleDouble
+.LSOverride
+
+# ================================================
+# 2. 前端构建产物（Vue3 / Vite）
+# ================================================
+node_modules/
+dist/
+dist-ssr/
+*.local
+
+# 前端日志
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Bun
+.bun.lockb
+
+# 环境变量（本地开发可能使用 .env.local）
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# ================================================
+# 3. 后端构建产物（Maven / Spring Boot）
+# ================================================
+target/
+
+# 编译的 .class 文件（Javac 输出）
+*.class
+
+# 日志文件
+*.log
+logs/
+
+# Spring Boot 打包产物（可选保留，仅在发布阶段手动取消注释）
+# *.jar
+# !.mvn/wrapper/maven-wrapper.jar
+# !target/*.jar
+
+# ================================================
+# 4. IDE 配置（全局忽略）
+# ================================================
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+*.code-workspace
+*.sublime-workspace
+*.sublime-project
+.project
+.classpath
+.settings/
+.factorypath
+
+# Eclipse（如果有人用）
+.classpath
+.project
+.settings/
+
+# NetBeans
+nbproject/private/
+build/
+nbbuild/
+dist/
+nbdist/
+.nb-gradle/
+
+# ================================================
+# 5. 其他通用产物
+# ================================================
+
+# Maven wrapper 校验文件（可保留，实际 jar 由 maven-wrapper.jar 提供）
+.mvn/wrapper/maven-wrapper.jar
+.mvn/wrapper/maven-wrapper.properties
+
+# 压缩包
+*.zip
+*.tar
+*.tar.gz
+*.rar
+
+# 临时文件
+*.tmp
+*.bak
+*.orig
+*.temp
+
+# 敏感文件（防止意外提交）
+*.pem
+*.key
+credentials.json
+secrets.json
+application-local.yml
+application-local.properties
+
+# ================================================
+# 6. 测试覆盖率报告
+# ================================================
+jacoco/
+*.exec
+coverage/
+*.lcov
+
+# ================================================
+# 7. 静态分析产物
+# ================================================
+spotbugs/
+pmd/
+checkstyle/
+*.rate
+
+# ================================================
+# 8. 明确保留的文件（不会被上面的规则误伤）
+# ================================================
+# 以下文件不会被上面的通配规则匹配，
+# 手动标注以防将来有人误加规则时第一时间发现
+
+# 规则文件
+!.cursorrules
+
+# 配置文件（按需取消注释）
+# !application.yml
+# !application-dev.yml
+# !application-prod.yml
+
+# README / 文档（按需调整）
+# !README.md
+# !DEV_GUIDE.md

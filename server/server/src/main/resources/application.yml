@@ -1,0 +1,25 @@
+server:
+  port: 8888
+
+spring:
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/CourseSystem?nullCatalogMeansCurrent=true&useSSL=false
+    username: root
+    password: 123456
+  main:
+    # 解决Spring Boot2.6后,因依赖循环引用导致启动时报错的问题
+    allow-circular-references: true
+
+# mp操作日志
+mybatis-plus:
+  configuration:
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+
+pagehelper:
+  # 设置方言，此处指定 MySQL 数据库
+  helper-dialect: mysql
+  # 是否启动页参数合理化
+  reasonable: true
+  # 设置为 true 时，如果 pageSize=0时查询处所有数据
+  page-size-zero: true

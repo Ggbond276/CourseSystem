@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.coursemanager.mapper.HomeworkMapper">
+
+    <resultMap id="basemap" type="com.coursemanager.pojo.Homework">
+        <id column="id" property="id" />
+        <result column="course_id" property="courseId" />
+        <result column="title" property="title" />
+        <result column="description" property="description" />
+        <result column="type" property="type" />
+        <result column="activity_tag" property="activityTag" />
+        <result column="total_score" property="totalScore" />
+        <result column="forbid_late" property="forbidLate" />
+        <result column="attachments" property="attachments" />
+        <result column="publish_time" property="publishTime" />
+        <result column="deadline" property="deadline" />
+        <result column="create_time" property="createTime" />
+        <result column="update_time" property="updateTime" />
+    </resultMap>
+
+    <!-- 条件查询作业 -->
+    <select id="selectCondition" resultMap="basemap" parameterType="com.coursemanager.lang.HomeworkCondition">
+        SELECT * FROM homework
+        <where>
+            <if test="id != null">
+                AND id = #{id}
+            </if>
+            <if test="courseId != null">
+                AND course_id = #{courseId}
+            </if>
+            <if test="title != null">
+                AND title LIKE CONCAT('%', #{title}, '%')
+            </if>
+            <if test="type != null">
+                AND type = #{type}
+            </if>
+            <if test="activityTag != null">
+                AND activity_tag = #{activityTag}
+            </if>
+        </where>
+        ORDER BY create_time DESC
+    </select>
+
+</mapper>
