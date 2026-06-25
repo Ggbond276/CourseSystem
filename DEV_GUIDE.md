@@ -261,7 +261,7 @@ wip
 
 ---
 
-## 五、每日站会汇报模板
+## 六、每日站会汇报模板
 
 > 每位组员每日 20:00 前在群里按以下格式汇报：
 
@@ -271,6 +271,42 @@ wip
 今日计划：[功能点 C]、[功能点 D]
 阻塞问题：[有/无] — 若有请说明具体情况
 ```
+
+---
+
+## 七、全系统路由直达导航表
+
+> 以下为前端骨架中所有 Vue 页面路由的完整导航路径，组员可直接复制到浏览器地址栏访问。使用前请先执行第三章的"开发者后门"代码，跳过登录验证。
+
+### 7.1 公共基础页面
+
+http://localhost:5173/ —— 首页（自动重定向至登录页）
+
+http://localhost:5173/login —— 登录页面（入口）
+
+### 7.2 教师端直达
+
+http://localhost:5173/teacher —— 教师端首页（自动重定向至课程管理）
+
+http://localhost:5173/teacher/course-manage —— 教师：课程管理大厅
+
+http://localhost:5173/teacher/create-course —— 教师：创建新课程
+
+http://localhost:5173/teacher/course/:courseId —— 教师：课程作业总览（需传入课程 ID）
+
+http://localhost:5173/teacher/homework/create —— 教师：布置新作业
+
+http://localhost:5173/teacher/homework/:homeworkId/submissions —— 教师：作业提交列表（需传入作业 ID）
+
+### 7.3 学生端直达
+
+http://localhost:5173/student —— 学生端首页（自动重定向至我的课程）
+
+http://localhost:5173/student/my-course —— 学生：我的课程列表
+
+http://localhost:5173/student/course/:courseId —— 学生：课程作业列表（需传入课程 ID）
+
+http://localhost:5173/student/homework/:homeworkId —— 学生：作业详情与提交（需传入作业 ID）
 
 ---
 

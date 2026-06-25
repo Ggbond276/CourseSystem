@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.ResponseStatus;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
 
 import java.util.List;
 import java.util.Map;
@@ -54,5 +55,16 @@ public class WebExceptionHandler {
                 (item) -> item.getDefaultMessage()));
         log.warn(exception.toString());
         return CommonResult.error(new ObjectMapper().writeValueAsString(map.values()));
+    }
+
+    /**
+     * 处理请求 Content-Type 错误（最常见：Postman Body 选成了 Text，应该选 raw + JSON）
+     */
+    @ResponseBody
+    @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public CommonResult<Void> httpMediaTypeNotSupportedExceptionHandler(HttpMediaTypeNotSupportedException exception) {
+        log.warn(exception.toString());
+        return CommonResult.error("请求 Content-Type 不正确，请使用 application/json");
     }
 }
