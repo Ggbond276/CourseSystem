@@ -60,4 +60,10 @@ public class User extends BaseBean<User> {
      */
     @TableField("avatar")
     private String avatar;
+
+    /**
+     * 所属学校ID
+     */
+    @TableField("school_id")
+    private Long schoolId;
 }

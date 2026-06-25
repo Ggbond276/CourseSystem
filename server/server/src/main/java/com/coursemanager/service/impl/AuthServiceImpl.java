@@ -9,7 +9,9 @@ import com.coursemanager.utils.JwtUtil;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import javax.annotation.Resource;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -30,7 +32,7 @@ public class AuthServiceImpl extends ServiceImpl<UserMapper, User> implements IA
      * 1. 根据账号查用户
      * 2. BCrypt 比对明文密码
      * 3. 生成 JWT token
-     * 4. 组装返回数据（含 token）
+     * 4. 组装返回数据（含 token + schoolId）
      */
     @Override
     public Map<String, Object> login(String account, String password) {
@@ -53,6 +55,7 @@ public class AuthServiceImpl extends ServiceImpl<UserMapper, User> implements IA
         result.put("name", user.getName());
         result.put("avatar", user.getAvatar());
         result.put("phone", user.getPhone());
+        result.put("schoolId", user.getSchoolId());
 
         return result;
     }
@@ -62,10 +65,10 @@ public class AuthServiceImpl extends ServiceImpl<UserMapper, User> implements IA
      * 1. 账号查重（已存在则抛异常）
      * 2. BCrypt 加密密码
      * 3. 雪花 ID 由 MyBatis-Plus 自动生成
-     * 4. 插入 user 表
+     * 4. 插入 user 表（含 schoolId）
      */
     @Override
-    public Long register(String account, String password, String name, String phone) {
+    public Long register(String account, String password, String name, String phone, Long schoolId) {
         LambdaQueryWrapper<User> checkWrapper = new LambdaQueryWrapper<>();
         checkWrapper.eq(User::getAccount, account);
         Long existsCount = this.count(checkWrapper);
@@ -78,8 +81,31 @@ public class AuthServiceImpl extends ServiceImpl<UserMapper, User> implements IA
         newUser.setPassword(passwordEncoder.encode(password));
         newUser.setName(name);
         newUser.setPhone(phone);
+        newUser.setSchoolId(schoolId);
 
         this.save(newUser);
         return newUser.getId();
+    }
+
+    /**
+     * 获取所有学校列表
+     * TODO(student-dev): 实现学校列表查询，从 school 表读取
+     */
+    @Override
+    public List<Map<String, Object>> listSchools() {
+        // TODO(teacher-dev): 从 school 表查询所有学校
+        // 示例返回：
+        List<Map<String, Object>> list = new ArrayList<>();
+        Map<String, Object> school1 = new HashMap<>();
+        school1.put("id", 1856321478523691000L);
+        school1.put("name", "北京大学");
+        school1.put("code", "PKU");
+        list.add(school1);
+        Map<String, Object> school2 = new HashMap<>();
+        school2.put("id", 1856321478523691001L);
+        school2.put("name", "清华大学");
+        school2.put("code", "THU");
+        list.add(school2);
+        return list;
     }
 }

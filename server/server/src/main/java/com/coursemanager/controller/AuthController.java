@@ -4,6 +4,7 @@ import com.coursemanager.service.IAuthService;
 import com.coursemanager.utils.CommonResult;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -22,7 +23,7 @@ public class AuthController {
      * 账号密码登录
      * POST /auth/login
      * 请求体：{ account: "学号/工号", password: "密码" }
-     * 响应：{ code, msg, data: { token, userId, name, avatar, phone } }
+     * 响应：{ code, msg, data: { token, userId, name, avatar, phone, schoolId } }
      */
     @PostMapping("/login")
     public CommonResult<?> login(@RequestBody LoginRequest request) {
@@ -33,7 +34,7 @@ public class AuthController {
     /**
      * 用户注册
      * POST /auth/register
-     * 请求体：{ account, password, name, phone }
+     * 请求体：{ account, password, name, phone, schoolId }
      * 响应：{ code, msg, data: { userId } }
      */
     @PostMapping("/register")
@@ -42,9 +43,21 @@ public class AuthController {
                 request.getAccount(),
                 request.getPassword(),
                 request.getName(),
-                request.getPhone()
+                request.getPhone(),
+                request.getSchoolId()
         );
         return CommonResult.success(Map.of("userId", userId), "注册成功");
+    }
+
+    /**
+     * 获取所有学校列表
+     * GET /auth/school-list
+     * 响应：{ code, msg, data: [{ id, name, code }] }
+     */
+    @GetMapping("/school-list")
+    public CommonResult<?> schoolList() {
+        List<Map<String, Object>> list = authService.listSchools();
+        return CommonResult.success(list, "获取成功");
     }
 
     // ---------- 内部请求类 ----------
@@ -64,6 +77,7 @@ public class AuthController {
         private String password;
         private String name;
         private String phone;
+        private Long schoolId;
 
         public String getAccount() { return account; }
         public void setAccount(String account) { this.account = account; }
@@ -73,5 +87,7 @@ public class AuthController {
         public void setName(String name) { this.name = name; }
         public String getPhone() { return phone; }
         public void setPhone(String phone) { this.phone = phone; }
+        public Long getSchoolId() { return schoolId; }
+        public void setSchoolId(Long schoolId) { this.schoolId = schoolId; }
     }
 }
