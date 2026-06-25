@@ -33,27 +33,55 @@
 - `server/server/src/main/java/com/coursemanager/pojo/BaseBean.java`
 - 项目根目录的 `README.md`、`DEV_GUIDE.md`
 
-### ✅ 前端首页与公共视图（小组协作维护）
-- `course_frontend/course_frontend/src/views/home/index.vue`
-- `course_frontend/course_frontend/src/views/home/components/EditForm.vue`
-- `course_frontend/course_frontend/src/views/home/components/MainTable.vue`
-- `course_frontend/course_frontend/src/views/home/config/index.js`
-- `course_frontend/course_frontend/src/views/home/config/rules.js`
+### ✅ 组员 B1 / B2 负责的作业板块（B1 归教师端，B2 归学生端）
+#### B1 教师端
+- `course_frontend/course_frontend/src/views/teacher/CourseHomework.vue`
+- `course_frontend/course_frontend/src/views/teacher/CreateHomework.vue`
+- `course_frontend/course_frontend/src/views/teacher/HomeworkSubmissions.vue`
+- `server/server/src/main/java/com/coursemanager/controller/HomeworkTeacherController.java`
+- `server/server/src/main/java/com/coursemanager/service/IHomeworkService.java`
+- `server/server/src/main/java/com/coursemanager/service/impl/HomeworkServiceImpl.java`
+- `server/server/src/main/java/com/coursemanager/mapper/HomeworkMapper.java`
+- `server/server/src/main/java/com/coursemanager/pojo/Homework.java`
+- `server/server/src/main/resources/com/coursemanager/mapper/HomeworkMapper.xml`
 
-### ✅ 组长自身开发板块（以 Course 教师端为例，组长可自由调整）
+#### B2 学生端 + 作业评论
+- `course_frontend/course_frontend/src/views/student/StudentHomework.vue`
+- `course_frontend/course_frontend/src/views/student/StudentHomeworkDetail.vue`
+- `course_frontend/course_frontend/src/api/comment.js`
+- `server/server/src/main/java/com/coursemanager/controller/HomeworkStudentController.java`
+- `server/server/src/main/java/com/coursemanager/controller/HomeworkCommentController.java`
+- `server/server/src/main/java/com/coursemanager/service/IStudentHomeworkService.java`
+- `server/server/src/main/java/com/coursemanager/service/impl/StudentHomeworkServiceImpl.java`
+- `server/server/src/main/java/com/coursemanager/service/IHomeworkCommentService.java`
+- `server/server/src/main/java/com/coursemanager/service/impl/HomeworkCommentServiceImpl.java`
+- `server/server/src/main/java/com/coursemanager/pojo/HomeworkSubmit.java`
+- `server/server/src/main/java/com/coursemanager/pojo/HomeworkComment.java`
+- `server/server/src/main/resources/com/coursemanager/mapper/HomeworkSubmitMapper.xml`
+
+#### 共享文件（B1 创建基础，B2 可复用但不得删改已有内容）
+- `server/server/src/main/java/com/coursemanager/mapper/HomeworkMapper.java`
+- `server/server/src/main/java/com/coursemanager/mapper/HomeworkSubmitMapper.java`
+- `server/server/src/main/java/com/coursemanager/mapper/HomeworkCommentMapper.java`
+- `server/server/src/main/java/com/coursemanager/pojo/Homework.java`
+- `server/server/src/main/resources/com/coursemanager/mapper/HomeworkMapper.xml`
+
+### ✅ 组员 A 负责的课程板块
 - `course_frontend/course_frontend/src/views/teacher/CourseManage.vue`
 - `course_frontend/course_frontend/src/views/teacher/CreateCourse.vue`
+- `course_frontend/course_frontend/src/views/student/MyCourse.vue`
 - `course_frontend/course_frontend/src/api/course.js`
 - `server/server/src/main/java/com/coursemanager/controller/CourseTeacherController.java`
 - `server/server/src/main/java/com/coursemanager/service/ICourseService.java`
-- `server/server/src/main/java/com/coursemanager/service/impl/CourseServiceImpl.java`
 - `server/server/src/main/java/com/coursemanager/mapper/CourseMapper.java`
 - `server/server/src/main/java/com/coursemanager/pojo/Course.java`
-- `server/server/src/main/java/com/coursemanager/dto/CourseAppendDto.java`
-- `server/server/src/main/java/com/coursemanager/dto/CourseChangeDto.java`
-- `server/server/src/main/java/com/coursemanager/dto/DtoTrans.java`
-- `server/server/src/main/java/com/coursemanager/lang/CourseCondition.java`
-- `server/server/src/main/resources/com/coursemanager/mapper/CourseMapper.xml`
+
+### ✅ 组员 C 负责的认证板块
+- `course_frontend/course_frontend/src/views/login/LoginIndex.vue`
+- `course_frontend/course_frontend/src/store/user.js`
+- `course_frontend/course_frontend/src/api/auth.js`
+- `server/server/src/main/java/com/coursemanager/controller/AuthController.java`
+- `server/server/src/main/java/com/coursemanager/service/IAuthService.java`
 
 ### ✅ 跨板块权限（合并组员 PR 时需要）
 - **所有** Controller / Service / Mapper / POJO / DTO / 前端 view / api 文件
@@ -67,7 +95,23 @@
 
 ---
 
-## 三、🚫 组长也不应随意触碰的内容
+## 三、B1/B2 协调规则（组长必读）
+
+作业板块拆分给 B1（教师端）和 B2（学生端 + 评论）两人开发，组长合并 PR 时需注意：
+
+| 场景 | 规则 |
+|------|------|
+| `HomeworkMapper.java`、`HomeworkMapper.xml` | B1 创建，B2 可复用但**不得删除或修改**已有方法 |
+| `HomeworkMapper.java` 新增方法 | 由组长判断归属：B1 逻辑找 B1 加，B2 逻辑找 B2 加 |
+| `HomeworkSubmitMapper.java`、`HomeworkSubmitMapper.xml` | B1 和 B2 都可能读写，各自只管自己的业务场景 |
+| `HomeworkCommentMapper.java` | 归 B2，B1 不碰 |
+| `HomeworkTeacherController.java` | 归 B1 |
+| `HomeworkStudentController.java`、`HomeworkCommentController.java` | 归 B2 |
+| B1 和 B2 同时改同一文件 | 优先以先合并的 PR 为准，后合并者调整 |
+
+---
+
+## 四、🚫 组长也不应随意触碰的内容
 
 虽然组长有最高权限，但下列场景**必须**在群里先通知，再开 PR：
 
@@ -81,7 +125,9 @@
 
 ---
 
-## 四、组长每日开发流程
+## 五、组长每日开发流程
+
+> 参考文档：`A_course_teacher.md`（组员 A）、`B1_homework.md`（组员 B1）、`B2_homework.md`（组员 B2）、`C_auth.md`（组员 C）中的"提交 PR 前自检清单"。
 
 ```bash
 # 1. 开工前：同步 dev
@@ -196,7 +242,7 @@ git push -f origin feature/course-zhuyihang
 
 ---
 
-## 八、【Cursor 提示词】— 完整复制下方代码块到 Cursor 对话框
+## 七、【Cursor 提示词】— 完整复制下方代码块到 Cursor 对话框
 
 ````markdown
 # 角色定位
@@ -251,11 +297,18 @@ git push -f origin feature/course-zhuyihang
 - 数据库表结构：通知全员
 
 # 🚫 普通开发任务不应触碰的文件
-- `course_frontend/course_frontend/src/views/teacher/Homework*.vue`、`CourseHomework.vue`、`CreateHomework.vue`（组员 B 板块）
-- `course_frontend/course_frontend/src/views/student/StudentHomework*.vue`（组员 B 板块）
-- `course_frontend/course_frontend/src/views/student/MyCourse.vue`（组员 A 板块）
-- `course_frontend/course_frontend/src/views/login/LoginIndex.vue`、`store/user.js`、`api/auth.js`（组员 C 板块）
-- 三个组员的 Controller / Service / Mapper / POJO 文件（仅在合并冲突时触碰）
+## 组员 B1 / B2 的作业板块（除非合并冲突，否则不碰）
+- B1：`views/teacher/CourseHomework.vue`、`views/teacher/CreateHomework.vue`、`views/teacher/HomeworkSubmissions.vue` 及 `HomeworkTeacherController.java`、`IHomeworkService.java` 等
+- B2：`views/student/StudentHomework*.vue`、`api/comment.js`、`HomeworkStudentController.java`、`HomeworkCommentController.java` 等
+
+## 组员 A 的课程板块
+- `views/teacher/CourseManage.vue`、`views/teacher/CreateCourse.vue`、`views/student/MyCourse.vue`、`api/course.js` 及所有 `Course*` 控制器/服务/Mapper
+
+## 组员 C 的认证板块
+- `views/login/LoginIndex.vue`、`store/user.js`、`api/auth.js` 及所有 `Auth*` 控制器/服务/Mapper
+
+## 组员的 Controller / Service / Mapper / POJO 文件
+- 三个组员的业务代码（仅在合并冲突时按规则处理）
 
 # 协作约束
 - 修改全局配置前，先用 Read 工具确认当前内容。
@@ -280,7 +333,7 @@ git push -f origin feature/course-zhuyihang
 
 👥 分工确认：
 - 组员 A：xxx
-- 组员 B：xxx
+- 组员 B1 / B2：xxx（作业板块已拆分）
 - 组员 C：xxx
 
 ⚠️ 风险预警：
@@ -307,9 +360,9 @@ git push -f origin feature/course-zhuyihang
 ## 十一、组长每日工作清单
 
 - [ ] 9:00 同步 dev 分支
-- [ ] 9:30 检查组员 PR 通知
+- [ ] 9:30 检查组员 PR 通知（重点关注 B1 / B2 是否有冲突）
 - [ ] 10:00 每周一开站会（仅周一）
 - [ ] 12:00 处理组员中午提出的 PR
 - [ ] 15:00 自己开发 2 小时（组长专属板块）
-- [ ] 18:00 处理组员下午提出的 PR
+- [ ] 18:00 处理组员下午提出的 PR（B1 和 B2 的 PR 需分开 review）
 - [ ] 21:00 接收组员进度同步，更新 `dev/progress.md`
