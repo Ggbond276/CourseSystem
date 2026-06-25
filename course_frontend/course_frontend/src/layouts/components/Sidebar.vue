@@ -79,7 +79,8 @@ const menuList = computed(() => {
     return [
       { path: '/teacher/dashboard', meta: { title: '工作台', icon: 'Odometer' } },
       { path: '/teacher/course-manage', meta: { title: '课程管理', icon: 'Reading' } },
-      { path: '/teacher/create-course', meta: { title: '创建课程', icon: 'Plus' } }
+      { path: '/teacher/create-course', meta: { title: '创建课程', icon: 'Plus' } },
+      { path: '/teacher/homework-list', meta: { title: '作业管理', icon: 'Document' } }
     ]
   }
   return parentRoute.children

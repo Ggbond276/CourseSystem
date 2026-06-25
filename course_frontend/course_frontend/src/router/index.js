@@ -15,7 +15,10 @@ const CreateCourse = () => import('@/views/teacher/CreateCourse.vue')
 const CourseHomework = () => import('@/views/teacher/CourseHomework.vue')
 const CreateHomework = () => import('@/views/teacher/CreateHomework.vue')
 const HomeworkSubmissions = () => import('@/views/teacher/HomeworkSubmissions.vue')
+const TeacherHomeworkList = () => import('@/views/teacher/TeacherHomeworkList.vue')
+const GradeDetail = () => import('@/views/teacher/GradeDetail.vue')
 
+const StudentWorkbench = () => import('@/views/student/StudentWorkbench.vue')
 const MyCourse = () => import('@/views/student/MyCourse.vue')
 const StudentHomework = () => import('@/views/student/StudentHomework.vue')
 const StudentHomeworkDetail = () => import('@/views/student/StudentHomeworkDetail.vue')
@@ -58,6 +61,12 @@ const routes = [
         meta: { title: '创建课程', icon: 'Plus' }
       },
       {
+        path: 'homework-list',
+        name: 'TeacherHomeworkList',
+        component: TeacherHomeworkList,
+        meta: { title: '作业管理', icon: 'Document' }
+      },
+      {
         path: 'course/:courseId',
         name: 'CourseHomework',
         component: CourseHomework,
@@ -74,6 +83,12 @@ const routes = [
         name: 'HomeworkSubmissions',
         component: HomeworkSubmissions,
         meta: { title: '批阅大厅', hidden: true }
+      },
+      {
+        path: 'homework/:homeworkId/grade',
+        name: 'GradeDetail',
+        component: GradeDetail,
+        meta: { title: '批改作业', hidden: true }
       }
     ]
   },
@@ -92,8 +107,8 @@ const routes = [
       },
       {
         path: 'my-course',
-        name: 'MyCourse',
-        component: MyCourse,
+        name: 'StudentWorkbench',
+        component: StudentWorkbench,
         meta: { title: '我的课程', icon: 'Reading' }
       },
       {
@@ -148,7 +163,6 @@ router.beforeEach((to, from, next) => {
   }
 
   // 角色越权检查：从路由的 meta.role 与用户实际角色比对
-  // 如果路由声明是 teacher 但当前用户是 student，跳学生工作台；反之亦然
   const requiredRole = to.matched.find((r) => r.meta.role)?.meta.role
   if (requiredRole && userStore.role && userStore.role !== requiredRole) {
     const fallback = userStore.role === 'teacher' ? '/teacher/dashboard' : '/student/dashboard'

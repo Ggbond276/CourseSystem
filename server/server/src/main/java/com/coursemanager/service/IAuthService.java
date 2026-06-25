@@ -2,6 +2,7 @@ package com.coursemanager.service;
 
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.coursemanager.pojo.User;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -25,7 +26,14 @@ public interface IAuthService extends IService<User> {
      * @param password 密码（明文，方法内会用 BCrypt 加密后存储）
      * @param name 真实姓名
      * @param phone 手机号（可选）
+     * @param schoolId 学校ID
      * @return 注册成功返回新用户 ID，失败抛 RuntimeException
      */
-    Long register(String account, String password, String name, String phone);
+    Long register(String account, String password, String name, String phone, Long schoolId);
+
+    /**
+     * 获取所有学校列表（登录/注册时选择学校用）
+     * @return 学校列表
+     */
+    List<Map<String, Object>> listSchools();
 }

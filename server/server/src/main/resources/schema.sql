@@ -2,7 +2,20 @@ SET NAMES utf8mb4;
 SET FOREIGN_KEY_CHECKS = 0;
 
 -- ----------------------------
--- 1. 用户基础信息表 (user)
+-- 1. 学校表 (school)
+-- ----------------------------
+DROP TABLE IF EXISTS `school`;
+CREATE TABLE `school` (
+  `id` bigint NOT NULL COMMENT '雪花算法主键',
+  `name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '学校名称',
+  `code` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL COMMENT '学校代码',
+  `region` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL COMMENT '所属地区',
+  `create_time` datetime DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`)
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '学校信息表' ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- 2. 用户基础信息表 (user)
 -- ----------------------------
 DROP TABLE IF EXISTS `user`;
 CREATE TABLE `user` (
@@ -12,14 +25,16 @@ CREATE TABLE `user` (
   `name` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '真实姓名',
   `phone` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL COMMENT '绑定的手机号',
   `avatar` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL COMMENT '头像托管URL',
+  `school_id` bigint DEFAULT NULL COMMENT '所属学校ID',
   `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '注册时间',
   `update_time` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '修改时间',
   PRIMARY KEY (`id`),
-  UNIQUE KEY `uk_account` (`account`)
+  UNIQUE KEY `uk_account` (`account`),
+  KEY `idx_school_id` (`school_id`)
 ) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '用户基础表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
--- 2. 课程信息表 (course - 组长权威原始表完整融合版)
+-- 3. 课程信息表 (course)
 -- ----------------------------
 DROP TABLE IF EXISTS `course`;
 CREATE TABLE `course`  (
@@ -41,14 +56,14 @@ CREATE TABLE `course`  (
 ) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '课程信息表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
--- 3. 用户-课程多对多关系表 (user_course)
+-- 4. 用户-课程多对多关系表 (user_course)
 -- ----------------------------
 DROP TABLE IF EXISTS `user_course`;
 CREATE TABLE `user_course` (
   `id` bigint NOT NULL COMMENT '关联ID（雪花算法）',
   `user_id` bigint NOT NULL COMMENT '用户ID',
   `course_id` bigint NOT NULL COMMENT '课程ID',
-  `role` tinyint(1) NOT NULL COMMENT '课堂角色角色: 1=任课教师, 2=正式学生, 3=助教',
+  `role` tinyint(1) NOT NULL COMMENT '课堂角色: 1=任课教师, 2=正式学生, 3=助教',
   `is_top` tinyint(1) DEFAULT 0 COMMENT '个人层面的置顶状态: 0=未置顶, 1=已置顶',
   `sort_weight` int DEFAULT 0 COMMENT '拖拽排序权重值，越大越靠前',
   `join_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '加入课堂时间',
@@ -58,7 +73,7 @@ CREATE TABLE `user_course` (
 ) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '用户与课程多对多关系表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
--- 4. 作业发布主表 (homework)
+-- 5. 作业发布主表 (homework)
 -- ----------------------------
 DROP TABLE IF EXISTS `homework`;
 CREATE TABLE `homework` (
@@ -80,7 +95,7 @@ CREATE TABLE `homework` (
 ) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '作业发布主表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
--- 5. 学生作业提交与批阅表 (homework_submit)
+-- 6. 学生作业提交与批阅表 (homework_submit)
 -- ----------------------------
 DROP TABLE IF EXISTS `homework_submit`;
 CREATE TABLE `homework_submit` (
@@ -102,7 +117,7 @@ CREATE TABLE `homework_submit` (
 ) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '学生作业提交与批阅状态表' ROW_FORMAT = Dynamic;
 
 -- ----------------------------
--- 6. 作业留言评论/讨论表 (homework_comment)
+-- 7. 作业留言评论/讨论表 (homework_comment)
 -- ----------------------------
 DROP TABLE IF EXISTS `homework_comment`;
 CREATE TABLE `homework_comment` (
@@ -119,15 +134,24 @@ CREATE TABLE `homework_comment` (
 SET FOREIGN_KEY_CHECKS = 1;
 
 -- ============================================================
--- 测试账号（密码统一为 123456，BCrypt 加密结果固定）
--- BCrypt 加密结果来源：htpasswd -bnBC 10 "" 123456 | tr -d ':\n' | sed 's/$2y/$2a/'
--- 加密原文：123456
+-- 测试数据
+-- BCrypt 加密结果对应明文：123456
 -- ============================================================
 
--- 教师测试账号：T001 / 123456
--- 学生测试账号：S001 / 123456
--- 注意：以下是真实可用的 BCrypt 哈希（对应明文 123456），$2b$ 与 $2a$ 兼容
-INSERT INTO `user` (id, account, password, name, phone, avatar, create_time, update_time)
+-- 学校数据
+INSERT INTO `school` (id, name, code, region, create_time) VALUES
+  (1856321478523691000, '北京大学', 'PKU', '北京', NOW()),
+  (1856321478523691001, '清华大学', 'THU', '北京', NOW()),
+  (1856321478523691002, '复旦大学', 'FDU', '上海', NOW()),
+  (1856321478523691003, '浙江大学', 'ZJU', '杭州', NOW()),
+  (1856321478523691004, '南京大学', 'NJU', '南京', NOW());
+
+-- 教师测试账号：T001 / 123456（属于北京大学）
+INSERT INTO `user` (id, account, password, name, phone, avatar, school_id, create_time, update_time)
 VALUES
-  (1856321478523690000, 'T001', '$2b$10$BcWbKT8Y9Yu97xujrh3gt.5G1tGv1HZumVw300xiSAX7BYpDwaegC', '张老师', '13800138000', NULL, NOW(), NOW()),
-  (1856321478523690001, 'S001', '$2b$10$BcWbKT8Y9Yu97xujrh3gt.5G1tGv1HZumVw300xiSAX7BYpDwaegC', '张三',   '13800138001', NULL, NOW(), NOW());
+  (1856321478523690000, 'T001', '$2b$10$BcWbKT8Y9Yu97xujrh3gt.5G1tGv1HZumVw300xiSAX7BYpDwaegC', '张老师', '13800138000', NULL, 1856321478523691000, NOW(), NOW());
+
+-- 学生测试账号：S001 / 123456（属于北京大学）
+INSERT INTO `user` (id, account, password, name, phone, avatar, school_id, create_time, update_time)
+VALUES
+  (1856321478523690001, 'S001', '$2b$10$BcWbKT8Y9Yu97xujrh3gt.5G1tGv1HZumVw300xiSAX7BYpDwaegC', '张三', '13800138001', NULL, 1856321478523691000, NOW(), NOW());

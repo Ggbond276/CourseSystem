@@ -11,59 +11,42 @@ import lombok.EqualsAndHashCode;
 import lombok.experimental.Accessors;
 
 import java.io.Serial;
+import java.util.Date;
 
 /**
  * @author 架构师
- * @date 2024/06/23
- * @description 用户实体类
+ * @date 2024/06/25
+ * @description 学校实体类
  */
 @Data
 @EqualsAndHashCode(callSuper = true)
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @Accessors(chain = true)
-@TableName("user")
-public class User extends BaseBean<User> {
+@TableName("school")
+public class School extends BaseBean<School> {
 
     @Serial
-    private static final long serialVersionUID = 1234567890123456789L;
+    private static final long serialVersionUID = 87654321987654321L;
 
     @TableId(type = IdType.ASSIGN_ID, value = "id")
     @JsonFormat(shape = JsonFormat.Shape.STRING)
     private Long id;
 
     /**
-     * 学号/工号/唯一登录账号
-     */
-    @TableField("account")
-    private String account;
-
-    /**
-     * 加密后的密码
-     */
-    @TableField("password")
-    private String password;
-
-    /**
-     * 真实姓名
+     * 学校名称
      */
     @TableField("name")
     private String name;
 
     /**
-     * 绑定的手机号
+     * 学校代码
      */
-    @TableField("phone")
-    private String phone;
+    @TableField("code")
+    private String code;
 
     /**
-     * 头像托管URL
+     * 所属地区
      */
-    @TableField("avatar")
-    private String avatar;
-
-    /**
-     * 所属学校ID
-     */
-    @TableField("school_id")
-    private Long schoolId;
+    @TableField("region")
+    private String region;
 }
