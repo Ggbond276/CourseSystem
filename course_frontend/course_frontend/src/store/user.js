@@ -3,7 +3,7 @@ import { ref } from 'vue'
 
 /**
  * 用户状态管理仓库
- * 负责管理登录用户的 token、用户ID、基本信息
+ * 负责管理登录用户的 token、用户ID、基本信息、角色
  */
 export const useUserStore = defineStore('user', () => {
   // 用户 token
@@ -20,6 +20,9 @@ export const useUserStore = defineStore('user', () => {
 
   // 用户手机号
   const phone = ref(localStorage.getItem('phone') || '')
+
+  // 用户角色：'teacher' 教师 / 'student' 学生
+  const role = ref(localStorage.getItem('role') || '')
 
   /**
    * 保存 token
@@ -48,6 +51,15 @@ export const useUserStore = defineStore('user', () => {
   }
 
   /**
+   * 保存用户角色
+   * @param {'teacher'|'student'} newRole
+   */
+  const setRole = (newRole) => {
+    role.value = newRole
+    localStorage.setItem('role', newRole)
+  }
+
+  /**
    * 清除所有用户状态（退出登录时调用）
    */
   const clearUser = () => {
@@ -56,12 +68,21 @@ export const useUserStore = defineStore('user', () => {
     name.value = ''
     avatar.value = ''
     phone.value = ''
+    role.value = ''
 
     localStorage.removeItem('token')
     localStorage.removeItem('userId')
     localStorage.removeItem('name')
     localStorage.removeItem('avatar')
     localStorage.removeItem('phone')
+    localStorage.removeItem('role')
+  }
+
+  /**
+   * 一键退出登录：清状态 + 跳登录页（让调用方传入 router 实例，避免 store 强依赖 router）
+   */
+  const logout = () => {
+    clearUser()
   }
 
   /**
@@ -78,9 +99,12 @@ export const useUserStore = defineStore('user', () => {
     name,
     avatar,
     phone,
+    role,
     setToken,
     setUserInfo,
+    setRole,
     clearUser,
+    logout,
     isLoggedIn
   }
 })
