@@ -16,11 +16,14 @@
       router
       class="sidebar-menu"
     >
-      <el-menu-item index="/role-prefix/dashboard">
+      <!-- 工作台：index 直接是真实路径（带角色前缀） -->
+      <el-menu-item :index="dashboardPath">
         <el-icon><Odometer /></el-icon>
         <template #title>工作台</template>
       </el-menu-item>
-      <el-menu-item index="/role-prefix/courses">
+
+      <!-- 我的课程：index 直接是真实路径（带角色前缀） -->
+      <el-menu-item :index="coursesPath">
         <el-icon><Reading /></el-icon>
         <template #title>我的课程</template>
       </el-menu-item>
@@ -30,7 +33,7 @@
 
 <script setup>
 import { computed } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRoute } from 'vue-router'
 import { useUserStore } from '@/store/user'
 import { Reading, Odometer } from '@element-plus/icons-vue'
 
@@ -39,7 +42,6 @@ defineProps({
 })
 
 const route = useRoute()
-const router = useRouter()
 const userStore = useUserStore()
 
 // 根据角色取路径前缀：教师 → /teacher，学生 → /student
@@ -47,35 +49,31 @@ const rolePrefix = computed(() => {
   return userStore.role === 'teacher' ? '/teacher' : '/student'
 })
 
-// 菜单项的真实路径（响应式计算）
-const menuItems = computed(() => [
-  {
-    index: `${rolePrefix.value}/dashboard`,
-    icon: 'Odometer',
-    title: '工作台'
-  },
-  {
-    index: `${rolePrefix.value}/courses`,
-    icon: 'Reading',
-    title: '我的课程'
-  }
-])
+// 工作台真实路径（响应式，随角色变化）
+const dashboardPath = computed(() => `${rolePrefix.value}/dashboard`)
 
-// 监听路径前缀变化，重定向到对应角色下的有效路径
-// 防止菜单点击的是模板占位符 /role-prefix/courses 而非真实路径
+// 我的课程真实路径（响应式，随角色变化）
+const coursesPath = computed(() => `${rolePrefix.value}/courses`)
+
+// 当前激活的菜单项：
+// 1. 当前在课程详情等子页面时，高亮「我的课程」
+// 2. 当前在 dashboard 时，高亮「工作台」
 const activeMenu = computed(() => {
-  // 当前路径以 /teacher 或 /student 开头时，认为是高亮 /teacher/courses 或 /student/courses
   const path = route.path
-  if (path.startsWith('/teacher')) return '/teacher/courses'
-  if (path.startsWith('/student')) return '/student/courses'
-  return path
+  // 命中「工作台」
+  if (path === dashboardPath.value) return dashboardPath.value
+  // 命中「我的课程」或它的子路由（course/detail/...、homework/...）
+  if (
+    path === coursesPath.value ||
+    path.startsWith(`${coursesPath.value}/`) ||
+    path.startsWith(`${rolePrefix.value}/course/`) ||
+    path.startsWith(`${rolePrefix.value}/homework/`)
+  ) {
+    return coursesPath.value
+  }
+  // 默认高亮工作台
+  return dashboardPath.value
 })
-
-// 点击菜单时，把模板字符串替换为真实路径再跳转
-const handleMenuSelect = (indexPath) => {
-  const realPath = indexPath.replace('role-prefix', rolePrefix.value.replace('/', ''))
-  router.push(realPath)
-}
 </script>
 
 <style scoped>
