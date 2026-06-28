@@ -7,9 +7,8 @@
 ## 一、我的负责范围
 
 ### ✅ 前端可触碰文件
-- `course_frontend/course_frontend/src/views/teacher/CourseManage.vue`
-- `course_frontend/course_frontend/src/views/teacher/CreateCourse.vue`
-- `course_frontend/course_frontend/src/views/student/MyCourse.vue`
+- `course_frontend/course_frontend/src/views/course/MyCourses.vue`
+- `course_frontend/course_frontend/src/views/course/CourseDetail.vue`
 - `course_frontend/course_frontend/src/api/course.js`
 - `course_frontend/course_frontend/src/api/index.js`（仅当需要导出新 API 时）
 
@@ -38,8 +37,8 @@
 - 项目根目录的 `DEV_GUIDE.md` 与 `README.md`
 
 **其他组员的板块：**
-- 所有 `views/teacher/Homework*.vue`、`views/teacher/CourseHomework.vue`、`views/teacher/CreateHomework.vue`（组员 B）
-- 所有 `views/student/StudentHomework*.vue`（组员 B / C）
+- 所有 `views/teacher/HomeworkSubmissions.vue`、`views/teacher/GradeDetail.vue`（组员 B）
+- 所有 `views/student/StudentHomeworkDetail.vue`（组员 B）
 - `views/login/LoginIndex.vue`、`api/auth.js`、`store/user.js`（组员 C）
 - 所有 `controller/Homework*.java` 及对应的 Service、Mapper、POJO、DTO（组员 B / C）
 - 所有 `controller/AuthController.java`、`pojo/User.java`、`mapper/UserMapper.java`（组员 C）
@@ -102,9 +101,8 @@ git push -u origin feature/course-zhuyihang
 
 # ✅ 我可以触碰的文件（白名单）
 ## 前端
-- `course_frontend/course_frontend/src/views/teacher/CourseManage.vue`
-- `course_frontend/course_frontend/src/views/teacher/CreateCourse.vue`
-- `course_frontend/course_frontend/src/views/student/MyCourse.vue`
+- `course_frontend/course_frontend/src/views/course/MyCourses.vue`
+- `course_frontend/course_frontend/src/views/course/CourseDetail.vue`
 - `course_frontend/course_frontend/src/api/course.js`
 - `course_frontend/course_frontend/src/api/index.js`（仅当需要导出新 API 时）
 
@@ -141,8 +139,8 @@ git push -u origin feature/course-zhuyihang
 - 项目根目录的 `DEV_GUIDE.md` 与 `README.md`
 
 ## 其他组员的板块
-- 所有 `views/teacher/Homework*.vue`、`views/teacher/CourseHomework.vue`、`views/teacher/CreateHomework.vue`（组员 B）
-- 所有 `views/student/StudentHomework*.vue`（组员 B / C）
+- 所有 `views/teacher/HomeworkSubmissions.vue`、`views/teacher/GradeDetail.vue`（组员 B）
+- 所有 `views/student/StudentHomeworkDetail.vue`（组员 B）
 - `views/login/LoginIndex.vue`、`api/auth.js`、`store/user.js`（组员 C）
 - 所有 `controller/Homework*.java` 及对应的 Service、Mapper、POJO、DTO（组员 B / C）
 - 所有 `controller/AuthController.java`、`pojo/User.java`、`mapper/UserMapper.java`（组员 C）

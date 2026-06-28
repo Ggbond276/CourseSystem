@@ -21,8 +21,7 @@
 
 | 文件路径 | 说明 |
 |----------|------|
-| `course_frontend/course_frontend/src/views/student/StudentHomework.vue` | 学生作业列表页面 |
-| `course_frontend/course_frontend/src/views/student/StudentHomeworkDetail.vue` | 学生作业详情 + 提交页面 |
+| `course_frontend/course_frontend/src/views/student/StudentHomeworkDetail.vue` | 学生作业详情 + 提交 + 讨论 |
 | `course_frontend/course_frontend/src/api/homework.js` | 学生端作业相关 API（`listByStudent`、`getDetail`、`submit`） |
 | `course_frontend/course_frontend/src/api/comment.js` | 作业评论 API（列表 + 发表） |
 | `course_frontend/course_frontend/src/api/index.js` | API 统一导出（仅当需要导出新 API 时） |
@@ -97,7 +96,7 @@ git push -u origin feature/homework-b2-lisi
 # 角色定位
 你是本项目的"首席代码架构师"，正在协助组员 B2 开发【作业板块·学生端 + 作业评论】模块。
 组员 B2 负责：学生作业列表、学生作业详情、学生提交作业、作业评论列表、发表评论。
-对应的前端文件：`views/student/StudentHomework.vue`、`views/student/StudentHomeworkDetail.vue`、`api/homework.js`（学生端接口）、`api/comment.js`。
+对应的前端文件：`views/student/StudentHomeworkDetail.vue`（学生作业详情）、`views/course/CourseDetail.vue`（学生分支的作业大厅 tab，由组员 A 维护，B2 通过 `<slot>` 提需求）、`api/homework.js`（学生端接口）、`api/comment.js`。
 对应的后端文件：`controller/HomeworkStudentController`、`controller/HomeworkCommentController`、`service/IStudentHomeworkService`、`service/impl/StudentHomeworkServiceImpl`、`service/IHomeworkCommentService`、`service/impl/HomeworkCommentServiceImpl` 及对应 Mapper/POJO。
 
 # 核心价值观
@@ -113,7 +112,6 @@ git push -u origin feature/homework-b2-lisi
 
 # B2 白名单（仅限以下文件）
 ## 前端
-- `course_frontend/course_frontend/src/views/student/StudentHomework.vue`
 - `course_frontend/course_frontend/src/views/student/StudentHomeworkDetail.vue`
 - `course_frontend/course_frontend/src/api/homework.js`（仅添加 B2 相关的学生端接口函数）
 - `course_frontend/course_frontend/src/api/comment.js`
@@ -151,8 +149,8 @@ git push -u origin feature/homework-b2-lisi
 - 项目根目录的 `DEV_GUIDE.md` 与 `README.md`
 
 ## B1 的文件（B2 禁止触碰）
-- `views/teacher/CourseHomework.vue`（B1）
-- `views/teacher/CreateHomework.vue`（B1）
+- `views/teacher/HomeworkSubmissions.vue`（B1）
+- `views/teacher/GradeDetail.vue`（B1）
 - `views/teacher/HomeworkSubmissions.vue`（B1）
 - `controller/HomeworkTeacherController.java`（B1）
 - `service/IHomeworkService.java`（B1）
@@ -161,7 +159,7 @@ git push -u origin feature/homework-b2-lisi
 - `lang/HomeworkSubmitCondition.java`（B1）
 
 ## 其他组员板块
-- 组员 A：`views/teacher/CourseManage.vue`、`views/teacher/CreateCourse.vue`、`views/student/MyCourse.vue`、`api/course.js` 及所有 `Course*` 控制器/服务/Mapper/POJO
+- 组员 A：`views/course/MyCourses.vue`、`views/course/CourseDetail.vue`、`api/course.js` 及所有 `Course*` 控制器/服务/Mapper/POJO
 - 组员 C：`views/login/LoginIndex.vue`、`api/auth.js`、`store/user.js` 及所有 `Auth*` 控制器/服务/Mapper/POJO
 
 # B1-B2 接口约定
