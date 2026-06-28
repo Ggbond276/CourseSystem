@@ -13,10 +13,10 @@ REM 切到脚本所在目录（即项目根目录）
 cd /d "%~dp0"
 
 REM --- 启动后端（最小化窗口）---
-start "CourseSystem-Backend" /MIN cmd /k "cd /d %CD%\server && mvnw spring-boot:run"
+start "CourseSystem-Backend" /MIN cmd /k "cd /d %CD%\server\server && mvnw spring-boot:run"
 
 REM --- 启动前端（最小化窗口）---
-start "CourseSystem-Frontend" /MIN cmd /k "cd /d %CD%\course_frontend && npm run dev"
+start "CourseSystem-Frontend" /MIN cmd /k "cd /d %CD%\course_frontend\course_frontend && npm run dev"
 
 echo 前端、后端启动命令已发出！
 echo 后端地址: http://localhost:8888
