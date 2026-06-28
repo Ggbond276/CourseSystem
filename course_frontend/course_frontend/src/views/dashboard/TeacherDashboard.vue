@@ -7,9 +7,13 @@
         <p class="welcome-subtitle">今天是个适合教学的好日子。</p>
       </div>
       <div class="welcome-right">
-        <el-button type="primary" size="large" @click="$router.push('/teacher/create-course')">
-          <el-icon><Plus /></el-icon>
-          <span>新建课程</span>
+        <el-button
+          type="primary"
+          size="large"
+          @click="$router.push('/teacher/courses')"
+        >
+          <el-icon><Reading /></el-icon>
+          <span>进入我的课程</span>
         </el-button>
       </div>
     </div>
@@ -40,28 +44,28 @@
             </div>
           </template>
           <div class="quick-actions">
-            <div class="quick-item" @click="$router.push('/teacher/course-manage')">
+            <div class="quick-item" @click="$router.push('/teacher/courses')">
               <el-icon :size="22" color="#2563eb"><Reading /></el-icon>
               <div>
                 <div class="quick-label">课程管理</div>
-                <div class="quick-desc">管理已创建的课程</div>
+                <div class="quick-desc">查看与创建我的课程</div>
               </div>
             </div>
-            <div class="quick-item" @click="$router.push('/teacher/create-course')">
+            <div class="quick-item" @click="$router.push('/teacher/courses')">
               <el-icon :size="22" color="#10b981"><Plus /></el-icon>
               <div>
                 <div class="quick-label">创建课程</div>
-                <div class="quick-desc">新建一门课程</div>
+                <div class="quick-desc">在我的课程页一键创建</div>
               </div>
             </div>
-            <div class="quick-item" @click="$router.push('/teacher/homework-list')">
+            <div class="quick-item" @click="$router.push('/teacher/courses')">
               <el-icon :size="22" color="#f59e0b"><Document /></el-icon>
               <div>
                 <div class="quick-label">作业管理</div>
-                <div class="quick-desc">查看所有作业</div>
+                <div class="quick-desc">在课程详情中发布与批改</div>
               </div>
             </div>
-            <div class="quick-item" @click="$router.push('/teacher/course-manage')">
+            <div class="quick-item" @click="$router.push('/teacher/courses')">
               <el-icon :size="22" color="#8b5cf6"><DataAnalysis /></el-icon>
               <div>
                 <div class="quick-label">数据统计</div>
@@ -78,7 +82,7 @@
           <template #header>
             <div class="panel-header">
               <span class="panel-title">本周作业</span>
-              <el-button text type="primary" @click="$router.push('/teacher/homework-list')">
+              <el-button text type="primary" @click="$router.push('/teacher/courses')">
                 查看全部
               </el-button>
             </div>
