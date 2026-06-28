@@ -10,17 +10,15 @@ const MainLayout = () => import('@/layouts/MainLayout.vue')
 const TeacherDashboard = () => import('@/views/dashboard/TeacherDashboard.vue')
 const StudentDashboard = () => import('@/views/dashboard/StudentDashboard.vue')
 
-const CourseManage = () => import('@/views/teacher/CourseManage.vue')
-const CreateCourse = () => import('@/views/teacher/CreateCourse.vue')
-const CourseHomework = () => import('@/views/teacher/CourseHomework.vue')
-const CreateHomework = () => import('@/views/teacher/CreateHomework.vue')
+// 课程大厅 + 课程详情（新重构的页面）
+const MyCourses = () => import('@/views/course/MyCourses.vue')
+const CourseDetail = () => import('@/views/course/CourseDetail.vue')
+
+// 教师批阅、批改
 const HomeworkSubmissions = () => import('@/views/teacher/HomeworkSubmissions.vue')
-const TeacherHomeworkList = () => import('@/views/teacher/TeacherHomeworkList.vue')
 const GradeDetail = () => import('@/views/teacher/GradeDetail.vue')
 
-const StudentWorkbench = () => import('@/views/student/StudentWorkbench.vue')
-const MyCourse = () => import('@/views/student/MyCourse.vue')
-const StudentHomework = () => import('@/views/student/StudentHomework.vue')
+// 学生作业详情
 const StudentHomeworkDetail = () => import('@/views/student/StudentHomeworkDetail.vue')
 
 // 路由配置
@@ -35,7 +33,8 @@ const routes = [
     component: LoginIndex,
     meta: { title: '登录' }
   },
-  // ========== 教师端：所有 /teacher/* 路由都包在 MainLayout 里 ==========
+
+  // ========== 教师端 ==========
   {
     path: '/teacher',
     component: MainLayout,
@@ -46,37 +45,19 @@ const routes = [
         path: 'dashboard',
         name: 'TeacherDashboard',
         component: TeacherDashboard,
-        meta: { title: '工作台', icon: 'Odometer' }
+        meta: { title: '工作台' }
       },
       {
-        path: 'course-manage',
-        name: 'CourseManage',
-        component: CourseManage,
-        meta: { title: '课程管理', icon: 'Reading' }
+        path: 'courses',
+        name: 'TeacherCourses',
+        component: MyCourses,
+        meta: { title: '我的课程' }
       },
       {
-        path: 'create-course',
-        name: 'CreateCourse',
-        component: CreateCourse,
-        meta: { title: '创建课程', icon: 'Plus' }
-      },
-      {
-        path: 'homework-list',
-        name: 'TeacherHomeworkList',
-        component: TeacherHomeworkList,
-        meta: { title: '作业管理', icon: 'Document' }
-      },
-      {
-        path: 'course/:courseId',
-        name: 'CourseHomework',
-        component: CourseHomework,
-        meta: { title: '作业管理', hidden: true }
-      },
-      {
-        path: 'homework/create',
-        name: 'CreateHomework',
-        component: CreateHomework,
-        meta: { title: '发布作业', hidden: true }
+        path: 'course/detail/:id',
+        name: 'TeacherCourseDetail',
+        component: CourseDetail,
+        meta: { title: '课程详情', hidden: true }
       },
       {
         path: 'homework/:homeworkId/submissions',
@@ -92,7 +73,8 @@ const routes = [
       }
     ]
   },
-  // ========== 学生端：所有 /student/* 路由都包在 MainLayout 里 ==========
+
+  // ========== 学生端 ==========
   {
     path: '/student',
     component: MainLayout,
@@ -103,19 +85,19 @@ const routes = [
         path: 'dashboard',
         name: 'StudentDashboard',
         component: StudentDashboard,
-        meta: { title: '工作台', icon: 'Odometer' }
+        meta: { title: '工作台' }
       },
       {
-        path: 'my-course',
-        name: 'StudentWorkbench',
-        component: StudentWorkbench,
-        meta: { title: '我的课程', icon: 'Reading' }
+        path: 'courses',
+        name: 'StudentCourses',
+        component: MyCourses,
+        meta: { title: '我的课程' }
       },
       {
-        path: 'course/:courseId',
-        name: 'StudentHomework',
-        component: StudentHomework,
-        meta: { title: '作业列表', hidden: true }
+        path: 'course/detail/:id',
+        name: 'StudentCourseDetail',
+        component: CourseDetail,
+        meta: { title: '课程详情', hidden: true }
       },
       {
         path: 'homework/:homeworkId',
@@ -125,6 +107,7 @@ const routes = [
       }
     ]
   },
+
   // 兜底：任何未匹配路由都跳登录
   {
     path: '/:pathMatch(.*)*',

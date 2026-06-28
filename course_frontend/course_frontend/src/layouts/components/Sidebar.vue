@@ -6,94 +6,75 @@
       <span v-show="!collapsed" class="logo-text">课堂管理</span>
     </div>
 
-    <!-- 菜单区域（按角色显示不同菜单） -->
+    <!-- 侧边栏：仅保留两个核心入口（工作台 + 我的课程） -->
     <el-menu
       :default-active="activeMenu"
       :collapse="collapsed"
-      :unique-opened="true"
       background-color="#1f2937"
       text-color="#d1d5db"
       active-text-color="#ffffff"
       router
       class="sidebar-menu"
     >
-      <template v-for="item in menuList" :key="item.path">
-        <!-- 子项含 hidden:true（点课程卡进去的二级页）的不在侧边栏显示 -->
-        <el-menu-item v-if="!item.meta.hidden" :index="resolvePath(item.path)">
-          <el-icon><component :is="iconMap[item.meta.icon] || Folder" /></el-icon>
-          <template #title>{{ item.meta.title }}</template>
-        </el-menu-item>
-      </template>
+      <el-menu-item index="/role-prefix/dashboard">
+        <el-icon><Odometer /></el-icon>
+        <template #title>工作台</template>
+      </el-menu-item>
+      <el-menu-item index="/role-prefix/courses">
+        <el-icon><Reading /></el-icon>
+        <template #title>我的课程</template>
+      </el-menu-item>
     </el-menu>
   </aside>
 </template>
 
 <script setup>
 import { computed } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@/store/user'
-import {
-  Reading,
-  Odometer,
-  Plus,
-  Folder
-} from '@element-plus/icons-vue'
+import { Reading, Odometer } from '@element-plus/icons-vue'
 
-// 接收父组件传来的折叠状态
 defineProps({
-  collapsed: {
-    type: Boolean,
-    default: false
-  }
+  collapsed: { type: Boolean, default: false }
 })
 
 const route = useRoute()
+const router = useRouter()
 const userStore = useUserStore()
 
-// Element Plus 的 icon 名称 -> 实际组件映射
-const iconMap = {
-  Odometer,
-  Reading,
-  Plus
-}
-
-/**
- * 根据当前用户角色选出对应的菜单（路由的 children）
- * 教师 -> /teacher 的 children
- * 学生 -> /student 的 children
- */
-const menuList = computed(() => {
-  // 通过 route.matched 找到当前所属的父路由（/teacher 或 /student）
-  const parentRoute = route.matched.find((r) => r.path === '/teacher' || r.path === '/student')
-  if (!parentRoute) return []
-
-  // 兜底：如果拿不到当前父路由，但能根据 role 推断
-  if (!parentRoute.children || parentRoute.children.length === 0) {
-    if (userStore.role === 'student') {
-      // 直接构造学生菜单（兜底场景：当前路由不在 /student 下）
-      return [
-        { path: '/student/dashboard', meta: { title: '工作台', icon: 'Odometer' } },
-        { path: '/student/my-course', meta: { title: '我的课程', icon: 'Reading' } }
-      ]
-    }
-    return [
-      { path: '/teacher/dashboard', meta: { title: '工作台', icon: 'Odometer' } },
-      { path: '/teacher/course-manage', meta: { title: '课程管理', icon: 'Reading' } },
-      { path: '/teacher/create-course', meta: { title: '创建课程', icon: 'Plus' } },
-      { path: '/teacher/homework-list', meta: { title: '作业管理', icon: 'Document' } }
-    ]
-  }
-  return parentRoute.children
+// 根据角色取路径前缀：教师 → /teacher，学生 → /student
+const rolePrefix = computed(() => {
+  return userStore.role === 'teacher' ? '/teacher' : '/student'
 })
 
-// 当前激活的菜单项
-const activeMenu = computed(() => route.path)
+// 菜单项的真实路径（响应式计算）
+const menuItems = computed(() => [
+  {
+    index: `${rolePrefix.value}/dashboard`,
+    icon: 'Odometer',
+    title: '工作台'
+  },
+  {
+    index: `${rolePrefix.value}/courses`,
+    icon: 'Reading',
+    title: '我的课程'
+  }
+])
 
-// 把子路由 path（如 "dashboard"）拼成完整路径（"/teacher/dashboard"）
-const resolvePath = (childPath) => {
-  if (childPath.startsWith('/')) return childPath
-  const parent = route.matched.find((r) => r.path === '/teacher' || r.path === '/student')
-  return parent ? `/${parent.path.split('/')[1]}/${childPath}` : `/${childPath}`
+// 监听路径前缀变化，重定向到对应角色下的有效路径
+// 防止菜单点击的是模板占位符 /role-prefix/courses 而非真实路径
+const activeMenu = computed(() => {
+  // 当前路径以 /teacher 或 /student 开头时，认为是高亮 /teacher/courses 或 /student/courses
+  const path = route.path
+  if (path.startsWith('/teacher')) return '/teacher/courses'
+  if (path.startsWith('/student')) return '/student/courses'
+  return path
+})
+
+// 点击菜单时，把模板字符串替换为真实路径再跳转
+const handleMenuSelect = (indexPath) => {
+  const realPath = indexPath.replace('role-prefix', rolePrefix.value.replace('/', ''))
+  router.push(realPath)
 }
 </script>
 
@@ -106,10 +87,7 @@ const resolvePath = (childPath) => {
   transition: width 0.25s ease;
   flex-shrink: 0;
 }
-
-.sidebar.is-collapsed {
-  width: 64px;
-}
+.sidebar.is-collapsed { width: 64px; }
 
 .sidebar-logo {
   height: 60px;
@@ -124,18 +102,11 @@ const resolvePath = (childPath) => {
   letter-spacing: 1px;
   flex-shrink: 0;
 }
+.logo-text { white-space: nowrap; overflow: hidden; }
 
-.logo-text {
-  white-space: nowrap;
-  overflow: hidden;
-}
+.sidebar-menu { flex: 1; border-right: none !important; }
 
-.sidebar-menu {
-  flex: 1;
-  border-right: none !important;
-}
-
-/* 覆盖 Element Plus 菜单主题色，让激活态更明显 */
+/* 激活态与 hover 样式 */
 .sidebar-menu :deep(.el-menu-item.is-active) {
   background-color: #2563eb !important;
   color: #ffffff !important;
@@ -143,7 +114,5 @@ const resolvePath = (childPath) => {
 .sidebar-menu :deep(.el-menu-item:hover) {
   background-color: #374151 !important;
 }
-.sidebar-menu :deep(.el-menu) {
-  border-right: none !important;
-}
+.sidebar-menu :deep(.el-menu) { border-right: none !important; }
 </style>

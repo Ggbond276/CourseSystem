@@ -45,6 +45,15 @@ const getTeacherCourseDetail = (courseId) => {
 }
 
 /**
+ * 获取课程详情（教师/学生通用版，按 ID 拉取基础信息）
+ * @param {number|string} courseId - 课程ID
+ * @returns Promise 响应结果
+ */
+const getCourseDetail = (courseId) => {
+  return request('get', `/course/teacher/detail/${courseId}`)
+}
+
+/**
  * 凭唯一加课码申请加入课堂（学生端）
  * @param {object} data - 格式 { joinCode: string }
  * @returns Promise 响应结果
@@ -67,6 +76,7 @@ export {
   saveCourseSort,
   toggleCourseTop,
   getTeacherCourseDetail,
+  getCourseDetail,
   joinCourse,
   getStudentCourseList
 }

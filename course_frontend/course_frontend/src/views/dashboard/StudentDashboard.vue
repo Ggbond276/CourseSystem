@@ -7,7 +7,7 @@
         <p class="welcome-subtitle">继续保持学习的热情，每一份努力都会被看见。</p>
       </div>
       <div class="welcome-right">
-        <el-button type="primary" size="large" @click="$router.push('/student/my-course')">
+        <el-button type="primary" size="large" @click="$router.push('/student/courses')">
           <el-icon><Reading /></el-icon>
           <span>进入我的课程</span>
         </el-button>
@@ -37,7 +37,7 @@
           <template #header>
             <div class="panel-header">
               <span class="panel-title">待办作业</span>
-              <el-button text type="primary" @click="$router.push('/student/my-course')">
+              <el-button text type="primary" @click="$router.push('/student/courses')">
                 查看全部
               </el-button>
             </div>
@@ -74,7 +74,7 @@
           <template #header>
             <div class="panel-header">
               <span class="panel-title">我的课程</span>
-              <el-button text type="primary" @click="$router.push('/student/my-course')">
+              <el-button text type="primary" @click="$router.push('/student/courses')">
                 查看全部
               </el-button>
             </div>
@@ -84,7 +84,7 @@
               v-for="course in recentCourses"
               :key="course.id"
               class="course-item"
-              @click="$router.push(`/student/course/${course.id}`)"
+              @click="$router.push(`/student/course/detail/${course.id}`)"
             >
               <div class="course-cover" :style="{ backgroundColor: course.coverColor || '#2563eb' }">
                 <span class="course-initial">{{ course.courseName?.charAt(0) || '课' }}</span>
