@@ -41,4 +41,28 @@
         ORDER BY create_time DESC
     </select>
 
+    <!-- 教师作业总览列表查询：联表 homework_submit 统计各状态的提交数量 -->
+    <!-- 字段对应 B1_API.md 接口2 的 data[] 每一项 -->
+    <select id="selectTeacherHomeworkOverview" resultType="java.util.LinkedHashMap">
+        SELECT
+            h.id AS homeworkId,
+            h.title AS title,
+            h.activity_tag AS activityTag,
+            h.deadline AS deadline,
+            h.total_score AS totalScore,
+            -- 已批改数：status = 2
+            COALESCE(SUM(CASE WHEN hs.status = 2 THEN 1 ELSE 0 END), 0) AS gradedCount,
+            -- 待批改数：status = 1
+            COALESCE(SUM(CASE WHEN hs.status = 1 THEN 1 ELSE 0 END), 0) AS ungradedCount,
+            -- 未提交数：status = 0
+            COALESCE(SUM(CASE WHEN hs.status = 0 THEN 1 ELSE 0 END), 0) AS unsubmittedCount
+        FROM homework h
+        -- LEFT JOIN 保证即使这门课还没有任何提交记录，作业行也能出现在结果里
+        LEFT JOIN homework_submit hs ON hs.homework_id = h.id
+        WHERE h.course_id = #{courseId}
+        GROUP BY h.id, h.title, h.activity_tag, h.deadline, h.total_score
+        -- 按发布时间倒序：最新作业在最上面（与 B_homework.md 列表约定一致）
+        ORDER BY h.publish_time DESC, h.id DESC
+    </select>
+
 </mapper>

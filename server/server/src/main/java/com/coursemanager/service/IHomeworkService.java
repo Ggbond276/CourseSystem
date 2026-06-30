@@ -6,27 +6,27 @@ import com.coursemanager.pojo.Homework;
 import java.util.List;
 import java.util.Map;
 
-/**
- * @author 架构师
- * @date 2024/06/23
- * @description 作业业务层接口（教师端）
- */
 public interface IHomeworkService extends IService<Homework> {
 
     /**
      * 发布新作业
-     * @param homework 作业实体
-     * @return 发布成功返回作业ID
+     *
+     * @param homework         作业实体（由 Controller 组装后传入）
+     * @param attachmentMapList 老师附件的 Map 列表（key 为 name、url），允许为 null
+     *                          业务层负责把附件列表 JSON 化并存入 homework.attachments；
+     *                          同时为该课程所有学生批量插入 status=0 的待提交记录。
+     * @return 新建作业的主键 ID
      */
-    Long createHomework(Homework homework);
+    Long createHomework(Homework homework, List<Map<String, String>> attachmentMapList);
 
     /**
-     * 获取某门课下的所有作业总览列表（带实时统计）
-     * @param courseId 课程ID
-     * @param teacherId 教师用户ID（用于权限校验）
-     * @return 作业总览列表
+     * 教师作业总览列表查询（接口 2：B1-B2 接口约定方法名 listByTeacher）
+     * GET /homework/teacher/list?courseId=xxx
+     *
+     * @param courseId 课程主键
+     * @return 作业总览列表，每项含 homeworkId/title/activityTag/deadline/isOver/gradedCount/ungradedCount/unsubmittedCount
      */
-    List<Map<String, Object>> getTeacherHomeworkOverview(Long courseId, Long teacherId);
+    List<Map<String, Object>> listByTeacher(Long courseId);
 
     /**
      * 获取某次作业的所有学生提交明细（教师批阅大厅）
