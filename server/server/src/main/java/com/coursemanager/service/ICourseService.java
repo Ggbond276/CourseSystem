@@ -27,11 +27,22 @@ public interface ICourseService extends IService<Course> {
     PageInfo<Course> getPage(PageQuery query, CourseCondition condition);
 
     /**
-     * 新增课程
-     * @param dto 课程新增参数（包含课程名称、学时、学分等）
-     * @return 新增成功返回 true，失败返回 false
+     * 新增课程（创建教学班级）
+     * @param dto 课程新增参数（含 teacherId / courseNum / courseName / className / term / period / credit / cover）
+     * @return 创建成功返回 true，失败返回 false
      */
     boolean appendCourse(CourseAppendDto dto);
+
+    /**
+     * 新增课程（创建教学班级）并返回带 id 与 joinCode 的 Course 实体。
+     * 本方法是 appendCourse 的增强版，专供 CourseTeacherController 调用，
+     * 让 Controller 能直接拿到 joinCode 用于响应。
+     * 旧的 appendCourse 仍保留 boolean 版本，供 CourseController 使用。
+     *
+     * @param dto 课程新增参数（同 appendCourse）
+     * @return 创建成功返回 Course 实体，失败返回 null
+     */
+    Course appendCourseAndReturn(CourseAppendDto dto);
 
     /**
      * 修改课程信息
@@ -48,12 +59,12 @@ public interface ICourseService extends IService<Course> {
     boolean deleteCourse(Long id);
 
     /**
-     * 创建全新教学班级
+     * 创建全新教学班级（带返回值的版本，被 appendCourse 复用）
      * @param course 课程实体
      * @param creatorId 创建者用户ID
-     * @return 创建成功返回 true
+     * @return 创建成功的 Course（含 id 与 joinCode）
      */
-    boolean createCourse(Course course, Long creatorId);
+    Course createCourse(Course course, Long creatorId);
 
     /**
      * 获取教师所教的课程列表（按学期分组）
