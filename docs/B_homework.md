@@ -7,10 +7,8 @@
 ## 一、我的负责范围
 
 ### ✅ 前端可触碰文件
-- `course_frontend/course_frontend/src/views/teacher/CourseHomework.vue`
-- `course_frontend/course_frontend/src/views/teacher/CreateHomework.vue`
 - `course_frontend/course_frontend/src/views/teacher/HomeworkSubmissions.vue`
-- `course_frontend/course_frontend/src/views/student/StudentHomework.vue`
+- `course_frontend/course_frontend/src/views/teacher/GradeDetail.vue`
 - `course_frontend/course_frontend/src/views/student/StudentHomeworkDetail.vue`
 - `course_frontend/course_frontend/src/api/homework.js`
 - `course_frontend/course_frontend/src/api/comment.js`
@@ -45,8 +43,7 @@
 - 项目根目录的 `DEV_GUIDE.md` 与 `README.md`
 
 **其他组员的板块：**
-- `views/teacher/CourseManage.vue`、`views/teacher/CreateCourse.vue`（组员 A）
-- `views/student/MyCourse.vue`（组员 A）
+- `views/course/MyCourses.vue`、`views/course/CourseDetail.vue`（组员 A）
 - `views/login/LoginIndex.vue`、`api/auth.js`、`store/user.js`（组员 C）
 - `api/course.js`（组员 A）
 - 所有 `controller/Course*.java`、`controller/AuthController.java`（组员 A / C）
@@ -112,10 +109,8 @@ git push -u origin feature/homework-zhangsan
 
 # ✅ 我可以触碰的文件（白名单）
 ## 前端
-- `course_frontend/course_frontend/src/views/teacher/CourseHomework.vue`
-- `course_frontend/course_frontend/src/views/teacher/CreateHomework.vue`
 - `course_frontend/course_frontend/src/views/teacher/HomeworkSubmissions.vue`
-- `course_frontend/course_frontend/src/views/student/StudentHomework.vue`
+- `course_frontend/course_frontend/src/views/teacher/GradeDetail.vue`
 - `course_frontend/course_frontend/src/views/student/StudentHomeworkDetail.vue`
 - `course_frontend/course_frontend/src/api/homework.js`
 - `course_frontend/course_frontend/src/api/comment.js`
@@ -158,8 +153,7 @@ git push -u origin feature/homework-zhangsan
 - 项目根目录的 `DEV_GUIDE.md` 与 `README.md`
 
 ## 其他组员的板块
-- `views/teacher/CourseManage.vue`、`views/teacher/CreateCourse.vue`（组员 A）
-- `views/student/MyCourse.vue`（组员 A）
+- `views/course/MyCourses.vue`、`views/course/CourseDetail.vue`（组员 A）
 - `views/login/LoginIndex.vue`、`api/auth.js`、`store/user.js`（组员 C）
 - `api/course.js`（组员 A）
 - 所有 `controller/Course*.java`、`controller/AuthController.java`（组员 A / C）

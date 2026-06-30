@@ -60,55 +60,60 @@
 
 ```
 前端：
-  src/views/teacher/CourseManage.vue        ← 组员 A
-  src/views/teacher/CreateCourse.vue        ← 组员 A
-  src/views/student/MyCourse.vue            ← 组员 A（学生端入口）
-  src/api/course.js                        ← 组员 A
+  src/views/course/MyCourses.vue             ← 组员 A（教师/学生共用的课程大厅）
+  src/views/course/CourseDetail.vue          ← 组员 A（教师/学生共用的课程详情）
+  src/api/course.js                          ← 组员 A
 
 后端：
-  controller/CourseTeacherController.java   ← 组员 A
-  controller/CourseStudentController.java  ← 组员 A
-  service/ICourseService.java              ← 组员 A
-  service/impl/CourseServiceImpl.java     ← 组员 A
-  service/IStudentCourseService.java       ← 组员 A
+  controller/CourseTeacherController.java    ← 组员 A
+  controller/CourseStudentController.java   ← 组员 A
+  service/ICourseService.java                ← 组员 A
+  service/impl/CourseServiceImpl.java       ← 组员 A
+  service/IStudentCourseService.java         ← 组员 A
   service/impl/StudentCourseServiceImpl.java ← 组员 A
-  mapper/UserCourseMapper.java             ← 组员 A
-  pojo/UserCourse.java                     ← 组员 C（User 板块已覆盖）
-  dto/（课程相关 DTO）                     ← 组员 A
+  mapper/UserCourseMapper.java               ← 组员 A
+  pojo/UserCourse.java                       ← 组员 C（User 板块已覆盖）
+  dto/（课程相关 DTO）                       ← 组员 A
 ```
+
+> 📝 **2026-06-28 重构后**：`MyCourses.vue` / `CourseDetail.vue` 是教师/学生共用页面，
+> 内部用 `role` 字段做分支渲染。B1/B2 想在课程详情里加作业相关 UI，**不要**直接改文件，
+> 而是提需求给组员 A 合并（详见 `docs/UI_REWORK_2026-06-28.md`）。
 
 **板块 B — 作业与提交：**
 
 ```
 前端：
-  src/views/teacher/CourseHomework.vue     ← 组员 B
-  src/views/teacher/CreateHomework.vue     ← 组员 B
-  src/views/teacher/HomeworkSubmissions.vue ← 组员 B
-  src/views/student/StudentHomework.vue    ← 组员 B
-  src/views/student/StudentHomeworkDetail.vue ← 组员 B
-  src/api/homework.js                      ← 组员 B
-  src/api/comment.js                       ← 组员 B
+  src/views/teacher/HomeworkSubmissions.vue  ← 组员 B（教师批阅大厅）
+  src/views/teacher/GradeDetail.vue         ← 组员 B（教师批改作业）
+  src/views/student/StudentHomeworkDetail.vue ← 组员 B（学生作业详情 / 提交 / 讨论）
+  src/api/homework.js                        ← 组员 B
+  src/api/comment.js                         ← 组员 B
 
 后端：
-  controller/HomeworkTeacherController.java ← 组员 B
-  controller/HomeworkStudentController.java ← 组员 B
-  controller/HomeworkCommentController.java ← 组员 B
-  service/IHomeworkService.java            ← 组员 B
-  service/impl/HomeworkServiceImpl.java    ← 组员 B
-  service/IStudentHomeworkService.java     ← 组员 B
+  controller/HomeworkTeacherController.java  ← 组员 B
+  controller/HomeworkStudentController.java  ← 组员 B
+  controller/HomeworkCommentController.java  ← 组员 B
+  service/IHomeworkService.java              ← 组员 B
+  service/impl/HomeworkServiceImpl.java      ← 组员 B
+  service/IStudentHomeworkService.java       ← 组员 B
   service/impl/StudentHomeworkServiceImpl.java ← 组员 B
-  service/IHomeworkCommentService.java     ← 组员 B
+  service/IHomeworkCommentService.java       ← 组员 B
   service/impl/HomeworkCommentServiceImpl.java ← 组员 B
-  mapper/HomeworkMapper.java               ← 组员 B
-  mapper/HomeworkSubmitMapper.java         ← 组员 B
-  mapper/HomeworkCommentMapper.java        ← 组员 B
-  pojo/Homework.java                       ← 组员 B
-  pojo/HomeworkSubmit.java                 ← 组员 B
-  pojo/HomeworkComment.java               ← 组员 B
-  dto/（作业相关 DTO）                     ← 组员 B
-  lang/HomeworkCondition.java              ← 组员 B
-  lang/HomeworkSubmitCondition.java        ← 组员 B
+  mapper/HomeworkMapper.java                 ← 组员 B
+  mapper/HomeworkSubmitMapper.java           ← 组员 B
+  mapper/HomeworkCommentMapper.java          ← 组员 B
+  pojo/Homework.java                         ← 组员 B
+  pojo/HomeworkSubmit.java                   ← 组员 B
+  pojo/HomeworkComment.java                  ← 组员 B
+  dto/（作业相关 DTO）                       ← 组员 B
+  lang/HomeworkCondition.java                ← 组员 B
+  lang/HomeworkSubmitCondition.java          ← 组员 B
 ```
+
+> 📝 **2026-06-28 重构后**：作业的「列表」「发布」「学生提交列表」原本的独立页面已合并到
+> `CourseDetail.vue` 的「作业大厅」tab + 弹窗，组员 B 不再维护那些文件，
+> 改在 `HomeworkSubmissions.vue` / `GradeDetail.vue` / `StudentHomeworkDetail.vue` 内做。
 
 **板块 C — 用户与鉴权：**
 
@@ -152,8 +157,8 @@ localStorage.setItem('phone', '18300000000');
 ```
 
 **Step 3.** 在浏览器地址栏直接输入目标路径，如：
-- `http://localhost:5173/teacher/course-manage` — 教师课程管理页
-- `http://localhost:5173/student/my-course` — 学生我的课程页
+- `http://localhost:5173/teacher/courses` — 教师课程大厅
+- `http://localhost:5173/student/courses` — 学生我的课程页
 
 **Step 4.** 页面将直接加载，不会被路由守卫拦截到登录页。
 
@@ -286,27 +291,25 @@ http://localhost:5173/login —— 登录页面（入口）
 
 ### 7.2 教师端直达
 
-http://localhost:5173/teacher —— 教师端首页（自动重定向至课程管理）
+http://localhost:5173/teacher/dashboard —— 教师：工作台
 
-http://localhost:5173/teacher/course-manage —— 教师：课程管理大厅
+http://localhost:5173/teacher/courses —— 教师：我的课程大厅
 
-http://localhost:5173/teacher/create-course —— 教师：创建新课程
+http://localhost:5173/teacher/course/detail/:id —— 教师：课程详情（含作业大厅 tab）
 
-http://localhost:5173/teacher/course/:courseId —— 教师：课程作业总览（需传入课程 ID）
+http://localhost:5173/teacher/homework/:homeworkId/submissions —— 教师：批阅大厅
 
-http://localhost:5173/teacher/homework/create —— 教师：布置新作业
-
-http://localhost:5173/teacher/homework/:homeworkId/submissions —— 教师：作业提交列表（需传入作业 ID）
+http://localhost:5173/teacher/homework/:homeworkId/grade —— 教师：批改作业（评分 + 评语）
 
 ### 7.3 学生端直达
 
-http://localhost:5173/student —— 学生端首页（自动重定向至我的课程）
+http://localhost:5173/student/dashboard —— 学生：工作台
 
-http://localhost:5173/student/my-course —— 学生：我的课程列表
+http://localhost:5173/student/courses —— 学生：我的课程大厅
 
-http://localhost:5173/student/course/:courseId —— 学生：课程作业列表（需传入课程 ID）
+http://localhost:5173/student/course/detail/:id —— 学生：课程详情（含作业大厅 tab）
 
-http://localhost:5173/student/homework/:homeworkId —— 学生：作业详情与提交（需传入作业 ID）
+http://localhost:5173/student/homework/:homeworkId —— 学生：作业详情（查看 + 提交 + 讨论）
 
 ---
 

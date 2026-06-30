@@ -35,9 +35,8 @@
 
 ### ✅ 组员 B1 / B2 负责的作业板块（B1 归教师端，B2 归学生端）
 #### B1 教师端
-- `course_frontend/course_frontend/src/views/teacher/CourseHomework.vue`
-- `course_frontend/course_frontend/src/views/teacher/CreateHomework.vue`
 - `course_frontend/course_frontend/src/views/teacher/HomeworkSubmissions.vue`
+- `course_frontend/course_frontend/src/views/teacher/GradeDetail.vue`
 - `server/server/src/main/java/com/coursemanager/controller/HomeworkTeacherController.java`
 - `server/server/src/main/java/com/coursemanager/service/IHomeworkService.java`
 - `server/server/src/main/java/com/coursemanager/service/impl/HomeworkServiceImpl.java`
@@ -46,7 +45,6 @@
 - `server/server/src/main/resources/com/coursemanager/mapper/HomeworkMapper.xml`
 
 #### B2 学生端 + 作业评论
-- `course_frontend/course_frontend/src/views/student/StudentHomework.vue`
 - `course_frontend/course_frontend/src/views/student/StudentHomeworkDetail.vue`
 - `course_frontend/course_frontend/src/api/comment.js`
 - `server/server/src/main/java/com/coursemanager/controller/HomeworkStudentController.java`
@@ -66,15 +64,23 @@
 - `server/server/src/main/java/com/coursemanager/pojo/Homework.java`
 - `server/server/src/main/resources/com/coursemanager/mapper/HomeworkMapper.xml`
 
+> 📝 **2026-06-28 重构后**：作业相关 UI 集中在 `CourseDetail.vue` 的「作业大厅」tab + 弹窗（详见 `docs/UI_REWORK_2026-06-28.md`）。
+> B1/B2 修改作业相关 UI 时，**优先**在新文件 `HomeworkSubmissions.vue` / `GradeDetail.vue` / `StudentHomeworkDetail.vue` 内实现；
+> 如必须改 `CourseDetail.vue`，请通过预留的 `<slot>` 提需求给组员 A 合并，**不要**直接修改该文件。
+
 ### ✅ 组员 A 负责的课程板块
-- `course_frontend/course_frontend/src/views/teacher/CourseManage.vue`
-- `course_frontend/course_frontend/src/views/teacher/CreateCourse.vue`
-- `course_frontend/course_frontend/src/views/student/MyCourse.vue`
+- `course_frontend/course_frontend/src/views/course/MyCourses.vue`
+- `course_frontend/course_frontend/src/views/course/CourseDetail.vue`
 - `course_frontend/course_frontend/src/api/course.js`
 - `server/server/src/main/java/com/coursemanager/controller/CourseTeacherController.java`
+- `server/server/src/main/java/com/coursemanager/controller/CourseStudentController.java`
 - `server/server/src/main/java/com/coursemanager/service/ICourseService.java`
+- `server/server/src/main/java/com/coursemanager/service/IStudentCourseService.java`
 - `server/server/src/main/java/com/coursemanager/mapper/CourseMapper.java`
 - `server/server/src/main/java/com/coursemanager/pojo/Course.java`
+
+> 📝 **2026-06-28 重构后**：`MyCourses.vue` 和 `CourseDetail.vue` 是教师/学生共用的容器页面，
+> 组员 A 拥有所有权，B1/B2 想在里面加作业相关 UI 必须通过 `<slot>` 提交。
 
 ### ✅ 组员 C 负责的认证板块
 - `course_frontend/course_frontend/src/views/login/LoginIndex.vue`
@@ -298,11 +304,12 @@ git push -f origin feature/course-zhuyihang
 
 # 🚫 普通开发任务不应触碰的文件
 ## 组员 B1 / B2 的作业板块（除非合并冲突，否则不碰）
-- B1：`views/teacher/CourseHomework.vue`、`views/teacher/CreateHomework.vue`、`views/teacher/HomeworkSubmissions.vue` 及 `HomeworkTeacherController.java`、`IHomeworkService.java` 等
-- B2：`views/student/StudentHomework*.vue`、`api/comment.js`、`HomeworkStudentController.java`、`HomeworkCommentController.java` 等
+- B1：`views/teacher/HomeworkSubmissions.vue`、`views/teacher/GradeDetail.vue` 及 `HomeworkTeacherController.java`、`IHomeworkService.java` 等
+- B2：`views/student/StudentHomeworkDetail.vue`、`api/comment.js`、`HomeworkStudentController.java`、`HomeworkCommentController.java` 等
 
 ## 组员 A 的课程板块
-- `views/teacher/CourseManage.vue`、`views/teacher/CreateCourse.vue`、`views/student/MyCourse.vue`、`api/course.js` 及所有 `Course*` 控制器/服务/Mapper
+- `views/course/MyCourses.vue`、`views/course/CourseDetail.vue`、`api/course.js` 及所有 `Course*` 控制器/服务/Mapper
+- ⚠️ `MyCourses.vue` / `CourseDetail.vue` 是教师/学生共用页面，B1/B2 想在里面加作业相关 UI 必须通过 `<slot>` 提交需求
 
 ## 组员 C 的认证板块
 - `views/login/LoginIndex.vue`、`store/user.js`、`api/auth.js` 及所有 `Auth*` 控制器/服务/Mapper
