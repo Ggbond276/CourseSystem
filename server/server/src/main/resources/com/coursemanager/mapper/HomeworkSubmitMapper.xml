@@ -44,4 +44,58 @@
         ORDER BY submit_time DESC
     </select>
 
+    <!-- 根据课程ID查出所有学生用户ID（role=2） -->
+    <select id="selectStudentIdListByCourseId" resultType="java.lang.Long">
+        SELECT user_id
+        FROM user_course
+        WHERE course_id = #{courseId}
+          AND role = 2
+        ORDER BY join_time ASC
+    </select>
+
+    <!--
+        批量插入待提交占位记录（status=0）
+        使用 INSERT ... ON DUPLICATE KEY UPDATE 实现幂等：
+        当同一 (homework_id, student_id) 已存在记录时不报错，避免重复发布同一作业时炸键
+    -->
+    <insert id="batchInsertPendingSubmit">
+        INSERT INTO homework_submit
+            (id, homework_id, student_id, status, similarity, word_count, create_time, update_time)
+        VALUES
+        <foreach collection="studentIdList" item="studentId" separator=",">
+            (NULL, #{homeworkId}, #{studentId}, 0, 0.00, 0, NOW(), NOW())
+        </foreach>
+        ON DUPLICATE KEY UPDATE update_time = NOW()
+    </insert>
+
+    <!-- 教师批阅大厅：联表 user 拿到学生姓名、学号，支持 status / studentName 筛选 -->
+    <!-- 字段对齐 B1_API.md 接口 3 的 data[] 每一项 -->
+    <select id="selectSubmitListForTeacher" resultType="java.util.LinkedHashMap">
+        SELECT
+            hs.id                                AS submitId,
+            u.name                               AS studentName,
+            u.account                            AS studentAccount,
+            hs.status                            AS status,
+            hs.submit_time                       AS submitTime,
+            hs.similarity                        AS similarity,
+            hs.word_count                        AS wordCount,
+            hs.score                             AS score
+        FROM homework_submit hs
+        -- INNER JOIN：只显示已经有提交记录的学生行
+        -- 老师批阅大厅关注的是"谁交了/谁没交"，但未交的占位记录没有 user 关联意义，
+        -- 此处先实现"已存在的提交记录"列表，未交学生通过接口 2 的 unsubmittedCount 统计即可
+        INNER JOIN user u ON u.id = hs.student_id
+        <where>
+            hs.homework_id = #{homeworkId}
+            <if test="status != null">
+                AND hs.status = #{status}
+            </if>
+            <if test="studentName != null and studentName != ''">
+                AND u.name LIKE CONCAT('%', #{studentName}, '%')
+            </if>
+        </where>
+        -- 排序：先按状态升序（让"未批阅"的靠前，方便老师批），再按提交时间倒序
+        ORDER BY hs.status ASC, hs.submit_time DESC
+    </select>
+
 </mapper>
