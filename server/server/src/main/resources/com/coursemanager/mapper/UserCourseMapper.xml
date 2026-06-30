@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.coursemanager.mapper.UserCourseMapper">
+
+    <!--
+        基础字段映射（以数据库实际结构为准）。
+        数据库有 create_time / update_time 两列（schema.sql 虽未写，但运行时已 ALTER 加上了），
+        因此这里要把它们也带上。
+    -->
+    <resultMap id="basemap" type="com.coursemanager.pojo.UserCourse">
+        <id column="id" property="id" />
+        <result column="user_id" property="userId" />
+        <result column="course_id" property="courseId" />
+        <result column="role" property="role" />
+        <result column="is_top" property="isTop" />
+        <result column="sort_weight" property="sortWeight" />
+        <result column="join_time" property="joinTime" />
+        <result column="create_time" property="createTime" />
+        <result column="update_time" property="updateTime" />
+    </resultMap>
+
+    <!-- 查询某教师作为"任课教师(role=1)"关联的全部课程 -->
+    <select id="selectTeacherRelations" resultMap="basemap">
+        SELECT * FROM user_course
+        WHERE user_id = #{teacherId} AND role = 1
+    </select>
+
+    <!-- 查询某学生作为"正式学生(role=2)"关联的全部课程 -->
+    <select id="selectStudentRelations" resultMap="basemap">
+        SELECT * FROM user_course
+        WHERE user_id = #{studentId} AND role = 2
+    </select>
+
+    <!-- 查询某用户与某课程的关联记录（不限角色） -->
+    <select id="selectOneByUserAndCourse" resultMap="basemap">
+        SELECT * FROM user_course
+        WHERE user_id = #{userId} AND course_id = #{courseId}
+        LIMIT 1
+    </select>
+
+    <!-- 查询某用户与某课程、且角色匹配的关联记录 -->
+    <select id="selectOneByUserCourseAndRole" resultMap="basemap">
+        SELECT * FROM user_course
+        WHERE user_id = #{userId} AND course_id = #{courseId} AND role = #{role}
+        LIMIT 1
+    </select>
+
+    <!-- 查询某教师作为"任课教师"关联的全部课程ID（仅返回ID列） -->
+    <select id="selectTeacherCourseIds" resultType="java.lang.Long">
+        SELECT course_id FROM user_course
+        WHERE user_id = #{teacherId} AND role = 1
+    </select>
+
+</mapper>
