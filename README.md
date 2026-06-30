@@ -49,14 +49,18 @@ CourseSystem/
 ### 2.2 组员各自认领的业务代码区
 
 > 前端 `src/views/` 下的目录划分，**按角色职能分工**，每人只管自己的目录，互不干扰。
+>
+> 📝 **2026-06-28 重构**：前端按「用户旅程驱动 UI」重构，原来的「教师/学生独立页面」合并为「共用页面 + 角色分支 + 弹窗」模型。详细设计见 `docs/UI_REWORK_2026-06-28.md`。
 
 | 目录 | 负责组员 | 包含页面 | 说明 |
 |---|---|---|---|
-| `views/login/` | 全组共建 | `LoginIndex.vue` | 登录页，所有用户共用入口 |
-| `views/teacher/` | 教师端开发组员 | `CourseManage.vue`（课程列表）、`CreateCourse.vue`（创建课程）、`CourseHomework.vue`（课程作业管理）、`CreateHomework.vue`（发布作业）、`HomeworkSubmissions.vue`（批阅大厅） | 教师功能页面 |
-| `views/student/` | 学生端开发组员 | `MyCourse.vue`（我的课程）、`StudentHomework.vue`（作业列表）、`StudentHomeworkDetail.vue`（作业详情含讨论区） | 学生功能页面 |
+| `views/login/` | 组员 C | `LoginIndex.vue` | 登录注册页，所有用户共用入口 |
+| `views/dashboard/` | 组长 | `TeacherDashboard.vue`、`StudentDashboard.vue` | 教师/学生工作台 |
+| `views/course/` | 组员 A | `MyCourses.vue`（课程大厅）、`CourseDetail.vue`（课程详情，含作业大厅 tab） | 教师/学生共用，组件内按 role 字段分支渲染 |
+| `views/teacher/` | 组员 B | `HomeworkSubmissions.vue`（批阅大厅）、`GradeDetail.vue`（批改作业） | 仅教师作业相关 |
+| `views/student/` | 组员 B | `StudentHomeworkDetail.vue`（作业详情 + 提交 + 讨论） | 仅学生作业相关 |
 
-> **注意**：新页面的路由也必须在此文件中注册。路由路径应清晰体现层级，如 `/teacher/course-manage`、`/student/my-course`。
+> **注意**：新页面的路由也必须在此文件中注册。路由路径应清晰体现层级，如 `/teacher/dashboard`、`/teacher/course/detail/:id`。
 > 路由配置文件位置：`src/router/index.js`
 
 ### 2.3 API 请求层（`src/api/`）

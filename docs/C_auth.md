@@ -29,10 +29,9 @@
 - 项目根目录的 `DEV_GUIDE.md` 与 `README.md`
 
 **其他组员的板块：**
-- `views/teacher/CourseManage.vue`、`views/teacher/CreateCourse.vue`（组员 A）
-- `views/teacher/CourseHomework.vue`、`views/teacher/CreateHomework.vue`、`views/teacher/HomeworkSubmissions.vue`（组员 B）
-- `views/student/MyCourse.vue`（组员 A）
-- `views/student/StudentHomework.vue`、`views/student/StudentHomeworkDetail.vue`（组员 B）
+- `views/course/MyCourses.vue`、`views/course/CourseDetail.vue`（组员 A）
+- `views/teacher/HomeworkSubmissions.vue`、`views/teacher/GradeDetail.vue`（组员 B）
+- `views/student/StudentHomeworkDetail.vue`（组员 B）
 - `api/course.js`、`api/homework.js`、`api/comment.js`（组员 A / B）
 - 所有 `controller/Course*.java`（组员 A）
 - 所有 `controller/Homework*.java`（组员 B）
@@ -131,10 +130,9 @@ git push -u origin feature/auth-lisi
 - 项目根目录的 `DEV_GUIDE.md` 与 `README.md`
 
 ## 其他组员的板块
-- `views/teacher/CourseManage.vue`、`views/teacher/CreateCourse.vue`（组员 A）
-- `views/teacher/CourseHomework.vue`、`views/teacher/CreateHomework.vue`、`views/teacher/HomeworkSubmissions.vue`（组员 B）
-- `views/student/MyCourse.vue`（组员 A）
-- `views/student/StudentHomework.vue`、`views/student/StudentHomeworkDetail.vue`（组员 B）
+- `views/course/MyCourses.vue`、`views/course/CourseDetail.vue`（组员 A）
+- `views/teacher/HomeworkSubmissions.vue`、`views/teacher/GradeDetail.vue`（组员 B）
+- `views/student/StudentHomeworkDetail.vue`（组员 B）
 - `api/course.js`、`api/homework.js`、`api/comment.js`（组员 A / B）
 - 所有 `controller/Course*.java`（组员 A）
 - 所有 `controller/Homework*.java`（组员 B）

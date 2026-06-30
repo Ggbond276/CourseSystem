@@ -16,6 +16,15 @@ import java.io.Serial;
  * @author 架构师
  * @date 2024/06/23
  * @description 用户-课程多对多关联实体类
+ *
+ * 字段映射说明（以数据库实际结构为准）：
+ * 实际数据库 user_course 表完整字段：
+ *   id, user_id, course_id, role, is_top, sort_weight, join_time,
+ *   create_time, update_time
+ *
+ * 注：虽然 schema.sql 中最初未包含 create_time / update_time，
+ *     但运行时数据库已手动 ALTER 增加了这两列；
+ *     因此本类继承 BaseBean，create_time / update_time 按正常列进行映射。
  */
 @Data
 @EqualsAndHashCode(callSuper = true)

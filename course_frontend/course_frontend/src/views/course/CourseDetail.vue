@@ -712,11 +712,12 @@ const handleSubmitHomework = async () => {
 }
 
 onMounted(async () => {
-  // 真实接口：getCourseDetail(courseId) → 回填 courseInfo
-  // 失败时维持 mock，保证页面有数据
+  // 真实接口：按当前用户角色取课程详情
+  // 教师端：GET /course/teacher/detail/{courseId}?teacherId=xxx
+  // 学生端：后端尚未实现，函数内部会 reject，走 mock 兜底
   try {
-    const res = await getCourseDetail(courseId)
-    if (res?.data?.code === 200 && res.data.data) {
+    const res = await getCourseDetail(courseId, userStore.role, userStore.userId)
+    if (res && res.data && res.data.code === 200 && res.data.data) {
       courseInfo.value = { ...courseInfo.value, ...res.data.data }
     }
   } catch (e) {

@@ -112,7 +112,7 @@ CREATE TABLE `homework_submit` (
   `teacher_comment` text CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL COMMENT '教师留下的评语',
   `similarity` decimal(5,2) DEFAULT '0.00' COMMENT '查重相似度百分比',
   `word_count` int DEFAULT 0 COMMENT '自动统计的字数',
-  `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间（BaseBean 继承字段）',
   `update_time` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_homework_student` (`homework_id`, `student_id`),
@@ -130,7 +130,7 @@ CREATE TABLE `homework_comment` (
   `content` text CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '评论正文',
   `is_anonymous` tinyint(1) DEFAULT 0 COMMENT '是否匿名发表: 0=实名, 1=匿名',
   `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '发表时间',
-  `update_time` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '修改时间',
+  `update_time` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '修改时间（BaseBean 继承字段）',
   PRIMARY KEY (`id`),
   KEY `idx_homework` (`homework_id`)
 ) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '作业详情页评论互动表' ROW_FORMAT = Dynamic;
