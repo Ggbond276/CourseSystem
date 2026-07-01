@@ -230,6 +230,7 @@ const loginFormRef = ref(null)
 const registerFormRef = ref(null)
 
 // 登录表单数据
+// schoolId 存字符串（学校列表的 id 在后端被强制转 String 输出，避开 JS Number 丢精度陷阱）
 const loginForm = reactive({
   schoolId: '',
   account: '',

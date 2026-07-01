@@ -99,8 +99,12 @@ public class AuthServiceImpl extends ServiceImpl<UserMapper, User> implements IA
     public List<Map<String, Object>> listSchools() {
         List<School> schoolList = schoolMapper.selectList(null);
         return schoolList.stream().map(school -> {
+            // 这里手动转 Map 而非直接返回 School 实体，
+            // 是为了控制 JSON 输出字段。关键：id 必须以字符串形式输出，
+            // 因为 Snowflake 19 位 Long 在 JS Number 上会丢精度，浏览器 JSON.parse
+            // 会把 5 所学校的 id 全部截成同一个数字，导致下拉框只能选中最后一项。
             Map<String, Object> map = new HashMap<>();
-            map.put("id", school.getId());
+            map.put("id", String.valueOf(school.getId()));
             map.put("name", school.getName());
             map.put("code", school.getCode());
             map.put("region", school.getRegion());

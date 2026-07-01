@@ -46,10 +46,13 @@ public class StudentCourseServiceImpl extends ServiceImpl<UserCourseMapper, User
 
         // 2. 检查是否已加入：幂等设计 —— 重复点击加课码视作成功，
         //    直接返回课程信息，避免前端拿到 500 误以为系统故障。
+        //    关键：必须限定 role=2（学生身份），否则会把"教师建课时写入的 role=1 关联"
+        //    误判成"学生已加入"，导致 list 接口查不到任何数据。
         UserCourse existingRelation = this.getOne(
             new LambdaQueryWrapper<UserCourse>()
                 .eq(UserCourse::getUserId, studentId)
                 .eq(UserCourse::getCourseId, course.getId())
+                .eq(UserCourse::getRole, 2)
         );
         if (existingRelation != null) {
             Map<String, Object> alreadyJoined = new LinkedHashMap<>();
