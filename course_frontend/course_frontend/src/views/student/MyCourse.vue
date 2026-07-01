@@ -333,40 +333,48 @@ const emptyDescription = computed(() => {
 // ===== 加载学生课程列表 =====
 const loadCourses = async () => {
   loading.value = true
-  // 先用 mock 占位
-  groupedCourseList.value = JSON.parse(JSON.stringify(mockGroupedCourses))
-
-  // 补上渐变色
-  groupedCourseList.value.forEach((g) => {
-    g.courses.forEach((c) => {
-      c.coverGradient = getCoverGradient(c)
-    })
-  })
 
   try {
     const studentId = userStore.userId
     if (!studentId) {
       ElMessage.warning('未检测到登录信息')
+      groupedCourseList.value = []
       return
     }
     const res = await getStudentCourseList(studentId)
     if (res && res.data && res.data.code === 200 && Array.isArray(res.data.data)) {
       // 后端返回的是 [{ term, courses: [...] }] 结构
       const list = res.data.data
-      // 补渐变色
+      // 把每条数据里的 id 转字符串，避免雪花 ID 丢精度
       list.forEach((g) => {
         if (g && Array.isArray(g.courses)) {
           g.courses.forEach((c) => {
+            c.id = c.id !== undefined && c.id !== null ? String(c.id) : c.id
             c.coverGradient = getCoverGradient(c)
           })
         }
       })
-      if (list.length > 0) {
-        groupedCourseList.value = list
-      }
+      // 接口成功就完全采用接口数据（即使为空，也说明学生真的没加入任何课）
+      groupedCourseList.value = list
+    } else {
+      // 接口返回格式异常：用 mock 占位
+      console.warn('学生课程列表接口返回格式异常，使用 mock 数据')
+      groupedCourseList.value = JSON.parse(JSON.stringify(mockGroupedCourses))
+      groupedCourseList.value.forEach((g) => {
+        g.courses.forEach((c) => {
+          c.coverGradient = getCoverGradient(c)
+        })
+      })
     }
   } catch (e) {
+    // 接口失败：用 mock 占位
     console.warn('学生课程列表接口调用失败，使用 mock 数据', e)
+    groupedCourseList.value = JSON.parse(JSON.stringify(mockGroupedCourses))
+    groupedCourseList.value.forEach((g) => {
+      g.courses.forEach((c) => {
+        c.coverGradient = getCoverGradient(c)
+      })
+    })
   } finally {
     loading.value = false
   }
@@ -397,37 +405,48 @@ const openJoinDialog = () => {
 
 const handleJoinSubmit = async () => {
   if (!joinFormRef.value) return
-  await joinFormRef.value.validate(async (valid) => {
-    if (!valid) return
 
-    const studentId = userStore.userId
-    if (!studentId) {
-      ElMessage.warning('未检测到登录信息')
-      return
-    }
+  // 关键：element-plus 的 validate 自身返回 Promise，校验失败会 reject
+  // 不要用 callback 形式，否则 await 不会等待校验结果
+  let isValid = false
+  try {
+    await joinFormRef.value.validate()
+    isValid = true
+  } catch (e) {
+    // 校验未通过，直接返回（Element Plus 内部已经显示了错误提示）
+    return
+  }
+  if (!isValid) return
 
-    joining.value = true
-    try {
-      const payload = {
-        studentId,
-        joinCode: joinForm.value.joinCode.trim()
-      }
-      const res = await joinCourse(payload)
-      if (res && res.data && res.data.code === 200) {
-        ElMessage.success('加入成功')
-        joinDialogVisible.value = false
-        // 重新拉取列表
-        loadCourses()
-      } else {
-        ElMessage.error((res && res.data && res.data.msg) || '加入失败')
-      }
-    } catch (e) {
-      console.error('加入课程接口异常:', e)
-      ElMessage.error('网络异常，请稍后重试')
-    } finally {
-      joining.value = false
+  const studentId = userStore.userId
+  if (!studentId) {
+    ElMessage.warning('未检测到登录信息')
+    return
+  }
+
+  joining.value = true
+  try {
+    // 关键 1：studentId 转 String，避免雪花 ID 丢精度
+    // 关键 2：joinCode 转大写并 trim，避免前端展示为大写但实际传小写导致后端查不到
+    const payload = {
+      studentId: String(studentId),
+      joinCode: joinForm.value.joinCode.trim().toUpperCase()
     }
-  })
+    const res = await joinCourse(payload)
+    if (res && res.data && res.data.code === 200) {
+      ElMessage.success('加入成功')
+      joinDialogVisible.value = false
+      // 重新拉取列表
+      loadCourses()
+    } else {
+      ElMessage.error((res && res.data && res.data.msg) || '加入失败')
+    }
+  } catch (e) {
+    console.error('加入课程接口异常:', e)
+    ElMessage.error('网络异常，请稍后重试')
+  } finally {
+    joining.value = false
+  }
 }
 
 // ===== 页面挂载 =====

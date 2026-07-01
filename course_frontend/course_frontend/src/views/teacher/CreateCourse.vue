@@ -251,8 +251,9 @@ const handleSubmit = async () => {
     submitting.value = true
     try {
       // 组装请求参数（必须带上 teacherId，等 UserContext 就绪后可去掉）
+      // 关键：所有雪花 ID 一律转 String，避免后端 Long 反序列化失败
       const payload = {
-        teacherId,
+        teacherId: String(teacherId),
         courseNum: form.courseNum || null,
         courseName: form.courseName,
         className: form.className,

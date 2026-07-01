@@ -205,6 +205,7 @@ const getCoverGradient = (course) => {
 }
 
 // ===== Mock 数据（接口失败时使用，保证页面有内容） =====
+// 重要：mock 与接口返回的 ID 都统一用字符串，避免雪花 ID 丢精度
 const mockTeacherCourses = [
   {
     id: '1856321478523691000',
@@ -343,12 +344,6 @@ const headerSubtitle = computed(() => {
 // ===== 加载课程列表 =====
 const loadCourses = async () => {
   loading.value = true
-  // 先用 mock 占位，避免空白
-  if (userStore.role === 'teacher') {
-    courseList.value = mockTeacherCourses.map((c) => ({ ...c }))
-  } else {
-    courseList.value = mockStudentCourses.map((c) => ({ ...c }))
-  }
 
   try {
     let res = null
@@ -357,6 +352,7 @@ const loadCourses = async () => {
       const teacherId = userStore.userId
       if (!teacherId) {
         ElMessage.warning('未检测到登录信息')
+        courseList.value = []
         return
       }
       res = await getTeacherCourseList(teacherId)
@@ -365,6 +361,7 @@ const loadCourses = async () => {
       const studentId = userStore.userId
       if (!studentId) {
         ElMessage.warning('未检测到登录信息')
+        courseList.value = []
         return
       }
       res = await getStudentCourseList(studentId)
@@ -376,10 +373,13 @@ const loadCourses = async () => {
       res.data.data.forEach((group) => {
         if (group && Array.isArray(group.courses)) {
           group.courses.forEach((c) => {
-            flatList.push({
+            // 关键：把 ID 统一转成字符串，避免雪花 ID 在前端比对时丢精度
+            const courseItem = {
               ...c,
+              id: c.id !== undefined && c.id !== null ? String(c.id) : c.id,
               term: group.term || c.term
-            })
+            }
+            flatList.push(courseItem)
           })
         }
       })
@@ -387,12 +387,25 @@ const loadCourses = async () => {
       flatList.forEach((c) => {
         c.coverGradient = getCoverGradient(c)
       })
-      if (flatList.length > 0) {
-        courseList.value = flatList
+      // 接口成功就完全采用接口数据（即使是空数组，也说明真的没有课程，不要保留 mock）
+      courseList.value = flatList
+    } else {
+      // 接口返回格式异常：用 mock 占位
+      console.warn('课程列表接口返回格式异常，使用 mock 数据')
+      if (userStore.role === 'teacher') {
+        courseList.value = mockTeacherCourses.map((c) => ({ ...c }))
+      } else {
+        courseList.value = mockStudentCourses.map((c) => ({ ...c }))
       }
     }
   } catch (e) {
+    // 接口失败：用 mock 占位
     console.warn('课程列表接口调用失败，使用 mock 数据', e)
+    if (userStore.role === 'teacher') {
+      courseList.value = mockTeacherCourses.map((c) => ({ ...c }))
+    } else {
+      courseList.value = mockStudentCourses.map((c) => ({ ...c }))
+    }
   } finally {
     loading.value = false
   }
@@ -421,9 +434,10 @@ const handleToggleTop = async (course) => {
     return
   }
   try {
+    // 关键：雪花 ID 一律转 String，避免后端 Long 反序列化失败
     const res = await toggleCourseTop({
-      teacherId,
-      courseId: course.id,
+      teacherId: String(teacherId),
+      courseId: String(course.id),
       isTop: newIsTop
     })
     if (res && res.data && res.data.code === 200) {
@@ -499,9 +513,9 @@ const handleDrop = async (event, targetCourse) => {
   }
 
   try {
-    // 课程 ID 转 string（雪花 ID 会丢精度）
+    // 关键：雪花 ID 一律转 String，避免后端 Long[] 反序列化失败
     const sortedCourseIds = newOrder.map((c) => String(c.id))
-    const res = await saveCourseSort({ teacherId, sortedCourseIds })
+    const res = await saveCourseSort({ teacherId: String(teacherId), sortedCourseIds })
     if (res && res.data && res.data.code === 200) {
       ElMessage.success('排序已保存')
     } else {

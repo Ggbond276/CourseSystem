@@ -2,8 +2,8 @@ import { request } from './index'
 
 /**
  * 创建全新教学班级（教师端）
- * @param {object} data - 课程信息，格式 { teacherId, courseNum, courseName, className, term, period, credit, cover }
- *                       teacherId 为必填，后端从 body 读取（等 UserContext 就绪后会改为从上下文拿）
+ * 重要：所有雪花 ID 必须以字符串形式提交，否则 JS Number 会丢精度导致后端 Long 反序列化失败
+ * @param {object} data - 课程信息，格式 { teacherId: string, courseNum, courseName, className, term, period, credit, cover }
  * @returns Promise 响应结果
  */
 const createCourse = (data) => {
@@ -12,17 +12,18 @@ const createCourse = (data) => {
 
 /**
  * 获取教师所教的课程大厅列表（支持学期分组）
- * @param {number|string} teacherId - 教师用户ID（必填，从 store 中取）
+ * 重要：teacherId 必须转 String，避免 GET query 参数丢精度
+ * @param {string|number} teacherId - 教师用户ID（推荐传 String）
  * @returns Promise 响应结果
  */
 const getTeacherCourseList = (teacherId) => {
-  return request('get', '/course/teacher/list', { teacherId })
+  return request('get', '/course/teacher/list', { teacherId: String(teacherId) })
 }
 
 /**
  * 课程卡片拖拽排序权重保存（教师端）
- * @param {object} data - 格式 { teacherId, sortedCourseIds: string[] }
- *                       课程ID必须传字符串（雪花ID 19 位会丢精度）
+ * 重要：所有雪花 ID 必须以字符串形式提交
+ * @param {object} data - 格式 { teacherId: string, sortedCourseIds: string[] }
  * @returns Promise 响应结果
  */
 const saveCourseSort = (data) => {
@@ -31,7 +32,8 @@ const saveCourseSort = (data) => {
 
 /**
  * 单门课程切换置顶状态（教师端）
- * @param {object} data - 格式 { teacherId, courseId: string, isTop: 0|1 }
+ * 重要：所有雪花 ID 必须以字符串形式提交
+ * @param {object} data - 格式 { teacherId: string, courseId: string, isTop: 0|1 }
  * @returns Promise 响应结果
  */
 const toggleCourseTop = (data) => {
@@ -40,17 +42,19 @@ const toggleCourseTop = (data) => {
 
 /**
  * 获取课程详情与顶部面包屑面板数据（教师端）
- * @param {number|string} courseId - 课程ID
- * @param {number|string} teacherId - 教师用户ID（必填）
+ * 重要：所有雪花 ID 必须以字符串形式提交
+ * @param {string|number} courseId - 课程ID（推荐传 String）
+ * @param {string|number} teacherId - 教师用户ID（推荐传 String）
  * @returns Promise 响应结果
  */
 const getTeacherCourseDetail = (courseId, teacherId) => {
-  return request('get', `/course/teacher/detail/${courseId}`, { teacherId })
+  return request('get', `/course/teacher/detail/${courseId}`, { teacherId: String(teacherId) })
 }
 
 /**
  * 凭唯一加课码申请加入课堂（学生端）
- * @param {object} data - 格式 { studentId, joinCode: string }
+ * 重要：studentId 必须以字符串形式提交
+ * @param {object} data - 格式 { studentId: string, joinCode: string }
  * @returns Promise 响应结果
  */
 const joinCourse = (data) => {
@@ -59,11 +63,12 @@ const joinCourse = (data) => {
 
 /**
  * 获取学生加入学习的课程卡片列表（学生端）
- * @param {number|string} studentId - 学生用户ID（必填，从 store 中取）
+ * 重要：studentId 必须转 String，避免 GET query 参数丢精度
+ * @param {string|number} studentId - 学生用户ID（推荐传 String）
  * @returns Promise 响应结果
  */
 const getStudentCourseList = (studentId) => {
-  return request('get', '/course/student/list', { studentId })
+  return request('get', '/course/student/list', { studentId: String(studentId) })
 }
 
 /**
