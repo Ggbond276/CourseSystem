@@ -376,7 +376,7 @@ import {
 } from '@element-plus/icons-vue'
 import { useUserStore } from '@/store/user'
 import { createHomework, submitHomework, getTeacherHomeworkList, getStudentHomeworkList } from '@/api/homework'
-import { getCourseDetail } from '@/api/course'
+import { getTeacherCourseDetail } from '@/api/course'
 
 const route = useRoute()
 const router = useRouter()
@@ -712,16 +712,32 @@ const handleSubmitHomework = async () => {
 }
 
 onMounted(async () => {
-  // 真实接口：按当前用户角色取课程详情
-  // 教师端：GET /course/teacher/detail/{courseId}?teacherId=xxx
-  // 学生端：后端尚未实现，函数内部会 reject，走 mock 兜底
+  // 优先调真实接口，失败时保留 mock 兜底
   try {
-    const res = await getCourseDetail(courseId, userStore.role, userStore.userId)
+    const teacherId = userStore.userId
+    const res = await getTeacherCourseDetail(courseId, Number(teacherId))
     if (res && res.data && res.data.code === 200 && res.data.data) {
-      courseInfo.value = { ...courseInfo.value, ...res.data.data }
+      const data = res.data.data
+      // 用后端返回的真实数据填充页面
+      courseInfo.value = {
+        ...courseInfo.value,
+        courseNum: data.courseNum || courseInfo.value.courseNum,
+        courseName: data.courseName || courseInfo.value.courseName,
+        className: data.className || courseInfo.value.className,
+        term: data.term || courseInfo.value.term,
+        period: data.period || courseInfo.value.period,
+        credit: data.credit || courseInfo.value.credit,
+        teacherName: data.teacherName || courseInfo.value.teacherName,
+        joinCode: data.joinCode || courseInfo.value.joinCode,
+        coverGradient: data.coverGradient || courseInfo.value.coverGradient
+      }
+      // 顶部统计数字
+      if (data.memberCount !== undefined) {
+        stats.value.studentCount = data.memberCount
+      }
     }
   } catch (e) {
-    console.warn('课程详情接口调用失败，使用 mock 数据', e)
+    console.warn('课程详情接口调用失败，使用 mock 数据兜底:', e)
   }
   // 同时尝试拉作业列表（按角色）
   try {
