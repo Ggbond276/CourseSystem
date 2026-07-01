@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.coursemanager.mapper.HomeworkCommentMapper">
+
+    <!--
+        作业评论列表查询（教师 / 学生共用）
+        联表 user 获取评论者姓名和头像
+        匿名逻辑：
+          - is_anonymous = 1（匿名） → userName 显示"匿名用户"，userAvatar 置为 null
+          - is_anonymous = 0（实名） → 返回真实姓名和头像
+        排序：按发表时间升序（早的在前）
+    -->
+    <select id="selectCommentList" resultType="java.util.LinkedHashMap">
+        SELECT
+            hc.id                                  AS commentId,
+            CASE
+                WHEN hc.is_anonymous = 1 THEN '匿名用户'
+                ELSE u.name
+            END                                    AS userName,
+            CASE
+                WHEN hc.is_anonymous = 1 THEN NULL
+                ELSE u.avatar
+            END                                    AS userAvatar,
+            hc.content                             AS content,
+            hc.create_time                         AS createTime
+        FROM homework_comment hc
+        LEFT JOIN user u ON u.id = hc.user_id
+        WHERE hc.homework_id = #{homeworkId}
+        ORDER BY hc.create_time ASC
+    </select>
+
+</mapper>

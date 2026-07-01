@@ -38,7 +38,7 @@ const gradeHomework = (data) => {
 
 /**
  * 获取某门课下属于学生的作业任务列表（学生端）
- * @param {object} params - 格式 { courseId: number }
+ * @param {object} params - 格式 { courseId: string }  // 后端雪花 ID 是 19 位 Long，前端拦截器会转字符串
  * @returns Promise 响应结果
  */
 const getStudentHomeworkList = (params) => {
@@ -47,7 +47,7 @@ const getStudentHomeworkList = (params) => {
 
 /**
  * 查看特定作业要求及个人提交/批改记录详情（学生端）
- * @param {object} params - 格式 { homeworkId: number }
+ * @param {object} params - 格式 { homeworkId: string }  // 后端雪花 ID 是 19 位 Long，前端拦截器会转字符串
  * @returns Promise 响应结果
  */
 const getStudentHomeworkDetail = (params) => {
@@ -56,7 +56,7 @@ const getStudentHomeworkDetail = (params) => {
 
 /**
  * 学生上传附件并提交作业（学生端）
- * @param {object} data - 格式 { homeworkId: number, content: string, attachments: Array }
+ * @param {object} data - 格式 { homeworkId: string, content: string, attachments: Array }  // homeworkId 为字符串雪花 ID
  * @returns Promise 响应结果
  */
 const submitHomework = (data) => {

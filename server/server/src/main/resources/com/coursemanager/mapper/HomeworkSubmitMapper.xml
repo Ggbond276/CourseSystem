@@ -83,4 +83,41 @@
         ORDER BY hs.status ASC, hs.submit_time DESC
     </select>
 
+    <!--
+        学生端：根据 homeworkId + studentId 精准定位一条提交记录
+        B2 用法：学生作业详情 / 列表 关联 mySubmission / status / score
+    -->
+    <select id="selectByHomeworkIdAndStudentId" resultMap="basemap">
+        SELECT <include refid="baseColumnList" />
+        FROM homework_submit
+        WHERE homework_id = #{homeworkId}
+          AND student_id  = #{studentId}
+        LIMIT 1
+    </select>
+
+    <!--
+        学生端：根据 作业ID 列表 + studentId 批量取该学生在所有作业下的提交记录
+        B2 用法：学生作业列表，一次 JOIN 取完所有 status/score，避免 N+1
+        关键：返回的行数 ≤ 作业数（没提交的作业不会出现），前端按 homeworkId 自己回填默认 status=0
+    -->
+    <select id="selectByHomeworkIdListAndStudentId" resultMap="basemap">
+        SELECT <include refid="baseColumnList" />
+        FROM homework_submit
+        WHERE student_id = #{studentId}
+          AND homework_id IN
+          <foreach collection="homeworkIdList" item="homeworkId" open="(" close=")" separator=",">
+              #{homeworkId}
+          </foreach>
+    </select>
+
+    <!--
+        共用列清单：让 selectByHomeworkIdAndStudentId / selectByHomeworkIdListAndStudentId
+        共用同一份列名拼接，避免 SQL 重复
+    -->
+    <sql id="baseColumnList">
+        id, homework_id, student_id, status, content, attachments,
+        submit_time, score, teacher_comment, similarity, word_count,
+        create_time, update_time
+    </sql>
+
 </mapper>

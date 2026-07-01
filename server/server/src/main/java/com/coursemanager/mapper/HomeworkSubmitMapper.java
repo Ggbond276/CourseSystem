@@ -33,4 +33,26 @@ public interface HomeworkSubmitMapper extends BaseMapper<HomeworkSubmit> {
             @org.apache.ibatis.annotations.Param("homeworkId") Long homeworkId,
             @org.apache.ibatis.annotations.Param("status") Integer status,
             @org.apache.ibatis.annotations.Param("studentName") String studentName);
+
+    /**
+     * 学生端：根据 作业ID + 学生ID 精准定位一条提交记录
+     * 用于学生作业列表 / 详情场景，一次取一条，避免 in (...) 过度查询
+     *
+     * @param homeworkId 作业主键
+     * @param studentId  学生用户ID
+     * @return 该学生的提交记录（没有时返回 null）
+     */
+    HomeworkSubmit selectByHomeworkIdAndStudentId(@org.apache.ibatis.annotations.Param("homeworkId") Long homeworkId,
+                                                  @org.apache.ibatis.annotations.Param("studentId") Long studentId);
+
+    /**
+     * 学生端：批量根据 作业ID 列表 + 学生ID 取该学生在所有作业下的提交记录
+     * 用于学生作业列表场景，一次 JOIN 取完所有 status/score，避免 N+1
+     *
+     * @param homeworkIdList 作业主键集合
+     * @param studentId      学生用户ID
+     * @return 提交记录列表（没交过的作业不会出现）
+     */
+    java.util.List<HomeworkSubmit> selectByHomeworkIdListAndStudentId(@org.apache.ibatis.annotations.Param("homeworkIdList") java.util.List<Long> homeworkIdList,
+                                                                      @org.apache.ibatis.annotations.Param("studentId") Long studentId);
 }

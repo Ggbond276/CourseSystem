@@ -1,13 +1,19 @@
 <template>
   <div class="homework-detail-container">
-    <!-- 顶部面包屑 -->
+    <!-- 顶部面包屑（点击项用编程式导航，避免路由不匹配时 catch-all 跳登录） -->
     <div class="page-header">
       <el-breadcrumb separator="/">
-        <el-breadcrumb-item :to="{ path: '/student/my-course' }">
-          我的课程
+        <el-breadcrumb-item>
+          <span class="breadcrumb-link" @click="handleGoToMyCourses">我的课程</span>
         </el-breadcrumb-item>
-        <el-breadcrumb-item :to="`/student/course/${courseId}`">
-          作业列表
+        <el-breadcrumb-item>
+          <span
+            class="breadcrumb-link"
+            :class="{ 'is-disabled': !courseId }"
+            @click="handleGoToCourseDetail"
+          >
+            作业列表
+          </span>
         </el-breadcrumb-item>
         <el-breadcrumb-item>作业详情</el-breadcrumb-item>
       </el-breadcrumb>
@@ -77,9 +83,9 @@
           </div>
 
           <!-- 提交附件 -->
-          <div v-if="homeworkDetail.mySubmission.submitAttachments && homeworkDetail.mySubmission.submitAttachments.length > 0" class="submit-attachments">
+          <div v-if="homeworkDetail.mySubmission.attachments && homeworkDetail.mySubmission.attachments.length > 0" class="submit-attachments">
             <h5>提交附件</h5>
-            <div v-for="(att, index) in homeworkDetail.mySubmission.submitAttachments" :key="index">
+            <div v-for="(att, index) in homeworkDetail.mySubmission.attachments" :key="index">
               <el-link :href="att.url" target="_blank" type="primary">
                 {{ att.name }}
               </el-link>
@@ -171,8 +177,15 @@
           />
         </el-form-item>
         <el-form-item label="上传附件">
-          <!-- TODO: 接入 OSS 文件上传组件 -->
-          <el-input v-model="submitForm.attachmentPlaceholder" placeholder="文件上传功能待接入" disabled />
+          <!-- OSS 文件上传功能待接入（依赖后端文件服务，不在 B2 白名单内） -->
+          <!-- 临时处理：用 el-alert 给出明确提示，避免用户以为可以上传、实际上传了又被丢弃 -->
+          <el-alert
+            type="info"
+            :closable="false"
+            show-icon
+            title="附件上传功能开发中"
+            description="本版本暂不支持文件附件上传，请将所有作答内容写在「提交内容」文本框中；后续将接入 OSS 服务。"
+          />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -188,12 +201,13 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { Clock, Loading } from '@element-plus/icons-vue'
-import { getStudentHomeworkDetail } from '@/api/homework'
+import { getStudentHomeworkDetail, submitHomework } from '@/api/homework'
 import { getCommentList, addComment } from '@/api/comment'
 
 const route = useRoute()
+const router = useRouter()
 
 const homeworkId = route.params.homeworkId
 const courseId = route.params.courseId
@@ -226,14 +240,35 @@ const submitting = ref(false)
 const submitFormRef = ref(null)
 
 const submitForm = ref({
-  content: '',
-  attachmentPlaceholder: ''
+  content: ''
 })
 
 onMounted(() => {
   loadHomeworkDetail()
   loadCommentList()
 })
+
+/**
+ * 面包屑 - 跳转到「我的课程」列表
+ * 已校验 router/index.js 中的实际路径是 /student/courses（不是 /student/my-course）
+ */
+const handleGoToMyCourses = () => {
+  router.push('/student/courses')
+}
+
+/**
+ * 面包屑 - 跳转到「作业列表」(课程详情页)
+ * 注意：当前路由只声明了 :homeworkId，courseId 可能是 undefined
+ * 如果 courseId 缺失，则降级到「我的课程」，避免跳到不存在的路径触 catch-all
+ */
+const handleGoToCourseDetail = () => {
+  if (courseId) {
+    router.push(`/student/course/${courseId}`)
+  } else {
+    ElMessage.warning('未携带课程参数，已返回课程列表')
+    router.push('/student/courses')
+  }
+}
 
 // 加载作业详情
 const loadHomeworkDetail = async () => {
@@ -292,16 +327,24 @@ const handleAddComment = async () => {
 
 // 提交作业
 const handleSubmitHomework = async () => {
+  // 1. 前端先做 trim 检查，与后端 StudentHomeworkServiceImpl.submitHomework 的 trim 防御保持一致
+  if (!submitForm.value.content || !submitForm.value.content.trim()) {
+    ElMessage.warning('请输入作业内容')
+    return
+  }
   submitting.value = true
   try {
+    // 2. homeworkId 是 19 位雪花 ID 的字符串（路由参数）；前端不会精度丢失
+    //    attachments 数组当前固定传空 []，OSS 上传组件接入后再传真实附件
     const res = await submitHomework({
       homeworkId,
-      content: submitForm.value.content,
+      content: submitForm.value.content.trim(),
       attachments: []
     })
     if (res.data.code === 200) {
       ElMessage.success('作业提交成功')
       showSubmitDialog.value = false
+      // 3. 重新拉详情，让 mySubmission 状态从 null → 已提交
       loadHomeworkDetail()
     } else {
       ElMessage.error(res.data.msg || '提交作业失败')
@@ -326,13 +369,32 @@ const statusTagType = (status) => {
   return map[status] || 'info'
 }
 
-// 单独引入 submitHomework 函数（这里需要从 api 导入）
-import { submitHomework } from '@/api/homework'
 </script>
 
 <style scoped>
 .homework-detail-container {
   padding: 20px;
+}
+
+.page-header {
+  margin-bottom: 16px;
+}
+
+/* 面包屑可点击项：视觉上像超链 */
+.breadcrumb-link {
+  cursor: pointer;
+  color: #409eff;
+  transition: color 0.2s;
+}
+.breadcrumb-link:hover {
+  text-decoration: underline;
+}
+.breadcrumb-link.is-disabled {
+  color: #c0c4cc;
+  cursor: not-allowed;
+}
+.breadcrumb-link.is-disabled:hover {
+  text-decoration: none;
 }
 
 .loading-box {
