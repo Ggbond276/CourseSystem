@@ -13,7 +13,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -59,10 +58,30 @@ public class HomeworkServiceImpl extends ServiceImpl<HomeworkMapper, Homework> i
         // 3. 查询这门课的所有学生（role=2），为每人创建一条 status=0 的待提交占位记录
         List<Long> studentIdList = homeworkSubmitMapper.selectStudentIdListByCourseId(homework.getCourseId());
         if (studentIdList != null && studentIdList.size() > 0) {
-            homeworkSubmitMapper.batchInsertPendingSubmit(newHomeworkId, studentIdList);
+            // 4. 为每个学生构造 HomeworkSubmit 实体，逐条插入（幂等：先查是否存在同名 student+homework 的记录）
+            for (Long studentId : studentIdList) {
+                // 判断是否已存在该学生对此作业的占位记录
+                com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<HomeworkSubmit> qw =
+                        new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<>();
+                qw.eq(HomeworkSubmit::getHomeworkId, newHomeworkId);
+                qw.eq(HomeworkSubmit::getStudentId, studentId);
+                HomeworkSubmit exist = homeworkSubmitMapper.selectOne(qw);
+                if (exist != null) {
+                    // 已存在则跳过（幂等保护）
+                    continue;
+                }
+                // 构造并插入占位记录
+                HomeworkSubmit pending = new HomeworkSubmit();
+                pending.setHomeworkId(newHomeworkId);
+                pending.setStudentId(studentId);
+                pending.setStatus(0);
+                pending.setSimilarity(java.math.BigDecimal.ZERO);
+                pending.setWordCount(0);
+                homeworkSubmitMapper.insert(pending);
+            }
         }
 
-        // 4. 把新作业 ID 返回给 Controller
+        // 5. 把新作业 ID 返回给 Controller
         return newHomeworkId;
     }
 

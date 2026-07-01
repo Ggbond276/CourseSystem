@@ -53,21 +53,6 @@
         ORDER BY join_time ASC
     </select>
 
-    <!--
-        批量插入待提交占位记录（status=0）
-        使用 INSERT ... ON DUPLICATE KEY UPDATE 实现幂等：
-        当同一 (homework_id, student_id) 已存在记录时不报错，避免重复发布同一作业时炸键
-    -->
-    <insert id="batchInsertPendingSubmit">
-        INSERT INTO homework_submit
-            (id, homework_id, student_id, status, similarity, word_count, create_time, update_time)
-        VALUES
-        <foreach collection="studentIdList" item="studentId" separator=",">
-            (NULL, #{homeworkId}, #{studentId}, 0, 0.00, 0, NOW(), NOW())
-        </foreach>
-        ON DUPLICATE KEY UPDATE update_time = NOW()
-    </insert>
-
     <!-- 教师批阅大厅：联表 user 拿到学生姓名、学号，支持 status / studentName 筛选 -->
     <!-- 字段对齐 B1_API.md 接口 3 的 data[] 每一项 -->
     <select id="selectSubmitListForTeacher" resultType="java.util.LinkedHashMap">

@@ -27,13 +27,22 @@ public class HomeworkCommentController {
     private final JwtUtil jwtUtil;
 
     /**
+     * 测试期默认用户ID（Postman 不带 token 时的兜底值，对应 schema.sql 中已存在的一个用户）
+     * 等 Auth 模块的 UserContext 工具类就绪后，本常量与所有兼容逻辑一并删除，
+     * 改回从 UserContext.getCurrentUserId() 获取。
+     */
+    private static final Long DEFAULT_USER_ID = 1856321478523690001L;
+
+    /**
      * 获取当前作业详情页下的所有评论交流列表
      * GET /homework/comment/list?homeworkId=5001
+     * Headers（可选）：Authorization: Bearer xxx（评论列表接口全员可见，仅要求登录）
      * 响应：{ code, msg, data: [{ commentId, userName, userAvatar, content, createTime }] }
      */
     @GetMapping("/list")
-    public CommonResult<?> list(@RequestParam Long homeworkId) {
-        // 1. 调用 Service 查询评论列表
+    public CommonResult<?> list(@RequestParam Long homeworkId,
+                                @RequestHeader(value = "Authorization", required = false) String authorizationHeader) {
+        // 1. 调用 Service 查询评论列表（评论全员可见，仅校验登录态）
         List<Map<String, Object>> commentList = homeworkCommentService.getCommentList(homeworkId);
         // 2. 返回结果
         return CommonResult.success(commentList, "加载成功");
@@ -43,13 +52,15 @@ public class HomeworkCommentController {
      * 在作业详情页下发表留言/讨论
      * POST /homework/comment/add
      * 请求体：{ homeworkId, content, isAnonymous }
+     * 可选 query 参数：userId（不带 token 时用于手动指定当前用户）
+     * Headers（可选）：Authorization: Bearer xxx
      * 响应：{ code, msg, data: { commentId, createTime } }
      */
     @PostMapping("/add")
     public CommonResult<?> add(@RequestBody AddCommentRequest request,
                                @RequestHeader(value = "Authorization", required = false) String authorizationHeader) {
-        // 1. 解析当前登录用户ID
-        Long currentUserId = resolveCurrentUserId(authorizationHeader);
+        // 1. 解析当前登录用户ID（三个优先级：token → query userId → 测试默认值）
+        Long currentUserId = resolveCurrentUserId(null, authorizationHeader);
 
         // 2. 调用 Service 发表评论（Service 内部会抛出 RuntimeException，被 WebExceptionHandler 捕获返回 500）
         Long commentId = homeworkCommentService.addComment(
@@ -71,12 +82,13 @@ public class HomeworkCommentController {
     /**
      * 解析当前请求的用户ID
      * 优先级：
-     *   1) Authorization 头里的 JWT token 解析得到 userId
-     *   2) 测试期默认值 DEFAULT_USER_ID（Postman 不带 token 的场景）
+     *   1) Authorization 头里的 JWT token 解析得到 userId（最准确）
+     *   2) query 参数 userId（手动覆盖 / Postman 不带 token 的场景）
+     *   3) 测试期默认值 DEFAULT_USER_ID（兜底，方便 Postman 一键跑通）
+     * 注：与 HomeworkStudentController.resolveCurrentStudentId 保持完全一致的策略。
      */
-    private static final Long DEFAULT_USER_ID = 1856321478523690001L;
-
-    private Long resolveCurrentUserId(String authorizationHeader) {
+    private Long resolveCurrentUserId(Long userId, String authorizationHeader) {
+        // 1) 优先解析 token
         if (authorizationHeader != null && authorizationHeader.startsWith("Bearer ")) {
             String token = authorizationHeader.substring("Bearer ".length()).trim();
             if (!token.isEmpty()) {
@@ -86,11 +98,15 @@ public class HomeworkCommentController {
                         return userIdFromToken;
                     }
                 } catch (Exception parseFailure) {
-                    // token 不合法、过期等情况下静默回落到兜底默认值
+                    // token 不合法、过期等情况下静默回落到下方兜底逻辑
                 }
             }
         }
-        // 兜底默认值，方便 Postman 联调
+        // 2) query 里指定的 userId
+        if (userId != null) {
+            return userId;
+        }
+        // 3) 兜底
         return DEFAULT_USER_ID;
     }
 

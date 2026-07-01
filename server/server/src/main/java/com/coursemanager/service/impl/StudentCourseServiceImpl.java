@@ -7,6 +7,8 @@ import com.coursemanager.mapper.UserCourseMapper;
 import com.coursemanager.pojo.Course;
 import com.coursemanager.pojo.UserCourse;
 import com.coursemanager.service.IStudentCourseService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,6 +27,8 @@ import java.util.*;
  */
 @Service
 public class StudentCourseServiceImpl extends ServiceImpl<UserCourseMapper, UserCourse> implements IStudentCourseService {
+
+    private static final Logger log = LoggerFactory.getLogger(StudentCourseServiceImpl.class);
 
     @Autowired
     private CourseMapper courseMapper;
@@ -74,6 +78,9 @@ public class StudentCourseServiceImpl extends ServiceImpl<UserCourseMapper, User
 
     @Override
     public List<Map<String, Object>> getStudentCourseGroupedList(Long studentId) {
+        // 【DEBUG日志】打印入参 studentId，确认后端收到的是什么值
+        log.info("[学生课程列表] 入参 studentId={}, 精确值={}", studentId, studentId);
+
         // 1. 查出该学生作为"正式学生(role=2)"的所有 user_course 关联记录
         List<UserCourse> userCourseList = this.list(
                 new LambdaQueryWrapper<UserCourse>()
@@ -82,8 +89,11 @@ public class StudentCourseServiceImpl extends ServiceImpl<UserCourseMapper, User
 
         // 2. 若没有任何关联，直接返回空列表
         if (userCourseList == null || userCourseList.isEmpty()) {
+            log.info("[学生课程列表] user_course 表中该学生没有关联记录，返回空列表");
             return new ArrayList<>();
         }
+
+        log.info("[学生课程列表] 查询到 {} 条 user_course 关联记录", userCourseList.size());
 
         // 3. 把所有课程ID收集起来，用于一次性查出课程详情
         List<Long> courseIdList = new ArrayList<>();

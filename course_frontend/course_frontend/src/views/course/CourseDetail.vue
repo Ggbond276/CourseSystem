@@ -376,7 +376,7 @@ import {
 } from '@element-plus/icons-vue'
 import { useUserStore } from '@/store/user'
 import { createHomework, submitHomework, getTeacherHomeworkList, getStudentHomeworkList } from '@/api/homework'
-import { getCourseDetail } from '@/api/course'
+import { getTeacherCourseDetail } from '@/api/course'
 
 const route = useRoute()
 const router = useRouter()
@@ -584,8 +584,10 @@ const handleBack = () => {
 
 // ===== 教师：去批阅 =====
 const handleGrade = (hw) => {
+  // 后端返回的作业 ID 字段是 homeworkId（字符串），而非 id
+  const homeworkId = hw.homeworkId || hw.id
   const prefix = userStore.role === 'teacher' ? '/teacher' : '/student'
-  router.push(`${prefix}/homework/${hw.id}/submissions`)
+  router.push(`${prefix}/homework/${homeworkId}/submissions`)
 }
 
 // ===== 教师：发布作业弹窗 =====
@@ -623,15 +625,18 @@ const handleCreateHomeworkSubmit = async () => {
     if (!valid) return
     creatingHomework.value = true
     try {
-      const payload = { ...homeworkForm.value, courseId }
+      // 后端要求 courseId 为字符串雪花 ID，必须 toString() 转换，否则 trim() 会报错
+      const payload = { ...homeworkForm.value, courseId: String(courseId) }
       // 调用真实接口
       const res = await createHomework(payload)
       if (res.data.code === 200) {
         ElMessage.success('作业发布成功')
         createHomeworkVisible.value = false
         // 临时把新作业 push 到列表头部（保证 UI 演示）
+        // 注意：后端返回的 homeworkId 是字符串，mock 数据也统一用 homeworkId 字段
+        const newHomeworkId = res.data.data?.homeworkId || 'HW-' + String(Date.now()).slice(-3)
         homeworkList.value.unshift({
-          id: 'HW-' + String(Date.now()).slice(-3),
+          homeworkId: newHomeworkId,
           title: homeworkForm.value.title,
           description: homeworkForm.value.description,
           type: homeworkForm.value.type,
@@ -672,7 +677,8 @@ const submitRules = {
 const openSubmitDialog = (hw) => {
   // 已批改的查看详情走跳转，不开弹窗
   if (hw.status === 2) {
-    router.push(`/student/homework/${hw.id}`)
+    const hwId = hw.homeworkId || hw.id
+    router.push(`/student/homework/${hwId}`)
     return
   }
   currentSubmitHomework.value = hw
@@ -685,8 +691,10 @@ const handleSubmitHomework = async () => {
     if (!valid) return
     submitting.value = true
     try {
+      // 后端返回的作业 ID 字段是 homeworkId，统一取 homeworkId 兜底 id
+      const hwId = currentSubmitHomework.value.homeworkId || currentSubmitHomework.value.id
       const payload = {
-        homeworkId: currentSubmitHomework.value.id,
+        homeworkId: hwId,
         content: submitForm.value.content,
         attachments: submitForm.value.attachments.map((f) => ({
           name: f.name,
@@ -698,7 +706,9 @@ const handleSubmitHomework = async () => {
         ElMessage.success('提交成功')
         submitHomeworkVisible.value = false
         // 临时把作业状态改为「已提交」
-        const target = homeworkList.value.find((h) => h.id === currentSubmitHomework.value.id)
+        const target = homeworkList.value.find(
+          (h) => (h.homeworkId || h.id) === (currentSubmitHomework.value.homeworkId || currentSubmitHomework.value.id)
+        )
         if (target) target.status = 1
       } else {
         ElMessage.error(res.data.msg || '提交失败')
@@ -712,16 +722,32 @@ const handleSubmitHomework = async () => {
 }
 
 onMounted(async () => {
-  // 真实接口：按当前用户角色取课程详情
-  // 教师端：GET /course/teacher/detail/{courseId}?teacherId=xxx
-  // 学生端：后端尚未实现，函数内部会 reject，走 mock 兜底
+  // 优先调真实接口，失败时保留 mock 兜底
   try {
-    const res = await getCourseDetail(courseId, userStore.role, userStore.userId)
+    const teacherId = userStore.userId
+    const res = await getTeacherCourseDetail(courseId, Number(teacherId))
     if (res && res.data && res.data.code === 200 && res.data.data) {
-      courseInfo.value = { ...courseInfo.value, ...res.data.data }
+      const data = res.data.data
+      // 用后端返回的真实数据填充页面
+      courseInfo.value = {
+        ...courseInfo.value,
+        courseNum: data.courseNum || courseInfo.value.courseNum,
+        courseName: data.courseName || courseInfo.value.courseName,
+        className: data.className || courseInfo.value.className,
+        term: data.term || courseInfo.value.term,
+        period: data.period || courseInfo.value.period,
+        credit: data.credit || courseInfo.value.credit,
+        teacherName: data.teacherName || courseInfo.value.teacherName,
+        joinCode: data.joinCode || courseInfo.value.joinCode,
+        coverGradient: data.coverGradient || courseInfo.value.coverGradient
+      }
+      // 顶部统计数字
+      if (data.memberCount !== undefined) {
+        stats.value.studentCount = data.memberCount
+      }
     }
   } catch (e) {
-    console.warn('课程详情接口调用失败，使用 mock 数据', e)
+    console.warn('课程详情接口调用失败，使用 mock 数据兜底:', e)
   }
   // 同时尝试拉作业列表（按角色）
   try {

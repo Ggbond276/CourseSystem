@@ -224,9 +224,10 @@ const handleSubmitGrade = async () => {
 
     submitting.value = true
     try {
+      // 后端 Controller 用 String.trim() 校验 submitId，必须是字符串
       const targetSubmitId = currentSubmission.value?.submitId || submitId
       const res = await gradeHomework({
-        submitId: targetSubmitId,
+        submitId: String(targetSubmitId),
         score: gradeForm.score,
         status: gradeForm.status,
         teacherComment: gradeForm.teacherComment
@@ -238,8 +239,13 @@ const handleSubmitGrade = async () => {
         ElMessage.error(res.data.msg || '批改失败')
       }
     } catch (error) {
-      console.error('批改异常:', error)
-      ElMessage.error('网络异常，请稍后重试')
+      // 展示后端返回的真实错误信息，而非吞成"网络异常"
+      if (error.response && error.response.data && error.response.data.msg) {
+        ElMessage.error(error.response.data.msg)
+      } else {
+        console.error('批改异常:', error)
+        ElMessage.error('网络异常，请稍后重试')
+      }
     } finally {
       submitting.value = false
     }

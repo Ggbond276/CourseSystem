@@ -26,6 +26,12 @@ public class StudentHomeworkServiceImpl extends ServiceImpl<HomeworkMapper, Home
     private HomeworkSubmitMapper homeworkSubmitMapper;
 
     /**
+     * Jackson 序列化/反序列化器（线程安全，做成单例复用，避免每次 parseAttachments 都 new 一个）
+     * 解析 homework 作业附件 / homework_submit 学生提交附件时使用
+     */
+    private final ObjectMapper objectMapper = new ObjectMapper();
+
+    /**
      * 学生作业列表查询实现思路：
      *   1) 先查 homework 表里该 courseId 的所有作业（按 publish_time 倒序）
      *   2) 批量查出这些作业对应的、该学生的所有 homework_submit 记录
@@ -159,8 +165,7 @@ public class StudentHomeworkServiceImpl extends ServiceImpl<HomeworkMapper, Home
             return result;
         }
         try {
-            ObjectMapper mapper = new ObjectMapper();
-            result = mapper.readValue(attachmentsJson, new TypeReference<List<Map<String, String>>>() {});
+            result = objectMapper.readValue(attachmentsJson, new TypeReference<List<Map<String, String>>>() {});
         } catch (Exception parseException) {
             // JSON 解析失败时返回空列表，不影响整体业务
         }
