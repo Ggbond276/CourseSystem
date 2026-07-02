@@ -161,6 +161,35 @@ public class CourseTeacherController {
         return CommonResult.success(data, "获取成功");
     }
 
+    /**
+     * 更新课程的可编辑信息（仅课程大纲与课程介绍）
+     * PUT /course/teacher/update-info
+     * 请求体：{ courseId, teacherId?, syllabus?, intro? }
+     *   syllabus / intro 均为可选，null 表示不更新该字段（保留数据库原值）
+     *   syllabus 必须是合法 JSON 字符串（前端在保存前用 JSON.stringify 序列化）
+     * 响应：{ code, msg, data: true }
+     */
+    @PutMapping("/update-info")
+    public CommonResult<?> updateInfo(@RequestBody UpdateCourseInfoRequest request) {
+        // 1. courseId 必填校验
+        Long courseId = request.getCourseId();
+        if (courseId == null) {
+            return CommonResult.fail("课程ID不能为空");
+        }
+        // 2. teacherId 兜底
+        Long teacherId = request.getTeacherId();
+        if (teacherId == null) {
+            teacherId = DEFAULT_TEACHER_ID;
+        }
+        // 3. 至少传一个字段，否则无意义
+        if (request.getSyllabus() == null && request.getIntro() == null) {
+            return CommonResult.fail("syllabus 与 intro 至少传一项");
+        }
+        boolean success = courseService.updateCourseInfo(
+                courseId, teacherId, request.getSyllabus(), request.getIntro());
+        return success ? CommonResult.success(Boolean.TRUE, "更新成功") : CommonResult.fail("更新失败");
+    }
+
     // ==================== 内部请求类 ====================
 
     /**
@@ -190,5 +219,24 @@ public class CourseTeacherController {
         public void setCourseId(Long courseId) { this.courseId = courseId; }
         public Integer getIsTop() { return isTop; }
         public void setIsTop(Integer isTop) { this.isTop = isTop; }
+    }
+
+    /**
+     * 更新课程信息请求体（课程大纲 + 课程介绍）
+     */
+    public static class UpdateCourseInfoRequest {
+        private Long teacherId;
+        private Long courseId;
+        private String syllabus;
+        private String intro;
+
+        public Long getTeacherId() { return teacherId; }
+        public void setTeacherId(Long teacherId) { this.teacherId = teacherId; }
+        public Long getCourseId() { return courseId; }
+        public void setCourseId(Long courseId) { this.courseId = courseId; }
+        public String getSyllabus() { return syllabus; }
+        public void setSyllabus(String syllabus) { this.syllabus = syllabus; }
+        public String getIntro() { return intro; }
+        public void setIntro(String intro) { this.intro = intro; }
     }
 }

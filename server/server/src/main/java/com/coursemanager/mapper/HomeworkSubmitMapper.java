@@ -31,7 +31,7 @@ public interface HomeworkSubmitMapper extends BaseMapper<HomeworkSubmit> {
 
     java.util.List<java.util.Map<String, Object>> selectSubmitListForTeacher(
             @org.apache.ibatis.annotations.Param("homeworkId") Long homeworkId,
-            @org.apache.ibatis.annotations.Param("status") Integer status,
+            @org.apache.ibatis.annotations.Param("filterStatus") Integer filterStatus,
             @org.apache.ibatis.annotations.Param("studentName") String studentName);
 
     /**
@@ -55,4 +55,13 @@ public interface HomeworkSubmitMapper extends BaseMapper<HomeworkSubmit> {
      */
     java.util.List<HomeworkSubmit> selectByHomeworkIdListAndStudentId(@org.apache.ibatis.annotations.Param("homeworkIdList") java.util.List<Long> homeworkIdList,
                                                                       @org.apache.ibatis.annotations.Param("studentId") Long studentId);
+
+    /**
+     * 学生工作台统计：拉取"已批改作业"的总分
+     * 用在学生 dashboard 顶部统计卡片，避免前端遍历所有课程 N+1
+     *
+     * @param studentId 学生用户ID
+     * @return 该学生已批改（status=2）作业的 score 总和（无任何记录返回 0）
+     */
+    Integer sumScoredScoreByStudentId(@org.apache.ibatis.annotations.Param("studentId") Long studentId);
 }

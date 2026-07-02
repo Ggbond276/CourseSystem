@@ -3,7 +3,7 @@
     <!-- 顶部面包屑 -->
     <div class="page-header">
       <el-breadcrumb separator="/">
-        <el-breadcrumb-item :to="{ path: '/teacher/course-manage' }">
+        <el-breadcrumb-item :to="{ name: 'TeacherCourses' }">
           我的课程
         </el-breadcrumb-item>
         <el-breadcrumb-item :to="`/teacher/homework/${homeworkId}/submissions`">

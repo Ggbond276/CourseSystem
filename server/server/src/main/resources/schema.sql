@@ -104,7 +104,7 @@ CREATE TABLE `homework_submit` (
   `id` bigint NOT NULL COMMENT '提交记录唯一主键（雪花算法）',
   `homework_id` bigint NOT NULL COMMENT '作业发布ID',
   `student_id` bigint NOT NULL COMMENT '学生用户ID',
-  `status` tinyint(1) DEFAULT 0 COMMENT '状态: 0=未交, 1=已提交(待批阅), 2=老师已批改, 3=打回重做',
+  `status` tinyint(4) NOT NULL DEFAULT 0 COMMENT '状态: 0=未交, 1=已提交(待批阅), 2=老师已批改, 3=打回重做',
   `content` text CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL COMMENT '学生填写的文本回答',
   `attachments` text CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL COMMENT '学生提交的附件集合(JSON格式)',
   `submit_time` datetime DEFAULT NULL COMMENT '实际电子打卡提交时间',
@@ -134,6 +134,40 @@ CREATE TABLE `homework_comment` (
   PRIMARY KEY (`id`),
   KEY `idx_homework` (`homework_id`)
 ) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '作业详情页评论互动表' ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- 8. 学期字典表 (term)
+-- ----------------------------
+DROP TABLE IF EXISTS `term`;
+CREATE TABLE `term` (
+  `id` bigint NOT NULL COMMENT '学期ID（雪花算法）',
+  `school_year` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '学年（如 2024-2025）',
+  `semester` tinyint(1) NOT NULL COMMENT '学期：1=第一学期 / 2=第二学期',
+  `display_name` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '完整显示名（如 2024-2025 第一学期）',
+  `start_date` date DEFAULT NULL COMMENT '学期开始日期',
+  `end_date` date DEFAULT NULL COMMENT '学期结束日期',
+  `is_current` tinyint(1) DEFAULT 0 COMMENT '是否为当前学期（0=否，1=是）',
+  `create_time` datetime DEFAULT CURRENT_TIMESTAMP,
+  `update_time` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`) USING BTREE,
+  UNIQUE KEY `uk_year_semester` (`school_year`, `semester`),
+  KEY `idx_current` (`is_current`)
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '学年学期字典表' ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- 9. 学院字典表 (department)
+-- ----------------------------
+DROP TABLE IF EXISTS `department`;
+CREATE TABLE `department` (
+  `id` bigint NOT NULL COMMENT '学院ID（雪花算法）',
+  `school_id` bigint DEFAULT NULL COMMENT '所属学校ID（关联 school.id）',
+  `name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT '学院名称',
+  `code` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL COMMENT '学院代码',
+  `create_time` datetime DEFAULT CURRENT_TIMESTAMP,
+  `update_time` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`) USING BTREE,
+  KEY `idx_school` (`school_id`)
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '学院字典表' ROW_FORMAT = Dynamic;
 
 SET FOREIGN_KEY_CHECKS = 1;
 

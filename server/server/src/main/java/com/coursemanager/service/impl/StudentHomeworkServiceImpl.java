@@ -3,8 +3,10 @@ package com.coursemanager.service.impl;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.coursemanager.mapper.HomeworkMapper;
 import com.coursemanager.mapper.HomeworkSubmitMapper;
+import com.coursemanager.mapper.UserCourseMapper;
 import com.coursemanager.pojo.Homework;
 import com.coursemanager.pojo.HomeworkSubmit;
+import com.coursemanager.pojo.UserCourse;
 import com.coursemanager.service.IStudentHomeworkService;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -24,6 +26,9 @@ public class StudentHomeworkServiceImpl extends ServiceImpl<HomeworkMapper, Home
 
     @Autowired
     private HomeworkSubmitMapper homeworkSubmitMapper;
+
+    @Autowired
+    private UserCourseMapper userCourseMapper;
 
     /**
      * Jackson 序列化/反序列化器（线程安全，做成单例复用，避免每次 parseAttachments 都 new 一个）
@@ -123,9 +128,11 @@ public class StudentHomeworkServiceImpl extends ServiceImpl<HomeworkMapper, Home
         Map<String, Object> resultMap = new LinkedHashMap<>();
         resultMap.put("homeworkId", homework.getId());
         resultMap.put("title", homework.getTitle());
+        resultMap.put("activityTag", homework.getActivityTag());
         resultMap.put("description", homework.getDescription());
         resultMap.put("deadline", homework.getDeadline());
         resultMap.put("totalScore", homework.getTotalScore());
+        resultMap.put("forbidLate", homework.getForbidLate());
 
         // 4.1 解析作业附件 JSON（可能为空或 null）
         List<Map<String, String>> homeworkAttachments = parseAttachments(homework.getAttachments());
@@ -227,5 +234,56 @@ public class StudentHomeworkServiceImpl extends ServiceImpl<HomeworkMapper, Home
             newSubmit.setStatus(1);  // 已提交待批阅
             homeworkSubmitMapper.insert(newSubmit);
         }
+    }
+
+    /**
+     * 学生工作台"待办作业"跨课程查询实现：
+     *   1) 从 user_course 查出该学生所有选修的课程ID（role=2）
+     *   2) 如果没有任何课程，直接返回空列表
+     *   3) 调用 HomeworkMapper.selectStudentPendingHomeworks 一次性查出所有待办
+     *      筛选条件：status in (0 未交, 1 已提交待批, 3 打回重做)
+     *      不包含 status=2（已批改，无需再处理）
+     */
+    @Override
+    public List<Map<String, Object>> getStudentPendingHomeworks(Long studentId) {
+        // 1. 防御
+        if (studentId == null) {
+            return new ArrayList<>();
+        }
+
+        // 2. 查出该学生选修的所有课程ID（用字符串列名避免 Lambda 方法引用的 null 安全警告）
+        List<UserCourse> userCourseList = userCourseMapper.selectList(
+                new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<UserCourse>()
+                        .eq("user_id", studentId)
+                        .eq("role", 2));
+
+        if (userCourseList == null || userCourseList.isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        // 3. 收集课程ID
+        List<Long> courseIdList = new ArrayList<>();
+        for (UserCourse uc : userCourseList) {
+            courseIdList.add(uc.getCourseId());
+        }
+
+        // 4. 跨课程查所有待办作业
+        return baseMapper.selectStudentPendingHomeworks(courseIdList, studentId);
+    }
+
+    /**
+     * 学生工作台"累计得分"实现：
+     *   1) 直接 SUM(status=2 且 score IS NOT NULL 的所有分数)
+     *   2) 没有已批改记录 → 0
+     */
+    @Override
+    public Integer getStudentTotalScoredScore(Long studentId) {
+        // 1. 防御
+        if (studentId == null) {
+            return 0;
+        }
+        // 2. 累加已批改分数（SQL 已 COALESCE 兜底为空时返回 0）
+        Integer total = homeworkSubmitMapper.sumScoredScoreByStudentId(studentId);
+        return total == null ? 0 : total;
     }
 }

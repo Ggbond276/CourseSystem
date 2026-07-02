@@ -125,6 +125,37 @@ public class CourseStudentController {
     }
 
     /**
+     * 获取课程详情（学生端）
+     * GET /course/student/detail/{courseId}
+     * Query 可选：?studentId=xxx；最终使用的 studentId 优先级：Authorization token > Query 参数 > 测试期默认 ID
+     * 响应：{ code, msg, data: { id, courseName, teacherName, credit, period, term, memberCount } }
+     */
+    @GetMapping("/detail/{courseId}")
+    public CommonResult<?> detail(
+            @PathVariable Long courseId,
+            @RequestParam(value = "studentId", required = false) Long studentId,
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
+        // studentId 兜底链：token > Query 参数 > 测试期默认 ID
+        Long finalStudentId = resolveUserIdFromToken(authHeader);
+        if (finalStudentId == null) {
+            finalStudentId = studentId;
+        }
+        if (finalStudentId == null) {
+            finalStudentId = DEFAULT_STUDENT_ID;
+        }
+        // 如果 token 与 Query 参数不一致，打印告警日志
+        if (studentId != null && !studentId.equals(finalStudentId)) {
+            log.warn("[学生课程详情] token 解析 userId={} 与 Query studentId={} 不一致，以 token 为准",
+                    finalStudentId, studentId);
+        }
+        Map<String, Object> data = studentCourseService.getStudentCourseDetail(courseId, finalStudentId);
+        if (data == null) {
+            return CommonResult.fail("课程不存在或您未选修该课程");
+        }
+        return CommonResult.success(data, "获取成功");
+    }
+
+    /**
      * 学生加入课程的请求体
      */
     public static class JoinCourseRequest {

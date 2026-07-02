@@ -125,15 +125,18 @@ public class StudentCourseServiceImpl extends ServiceImpl<UserCourseMapper, User
 
             // 组装单张课程卡片
             Map<String, Object> card = new LinkedHashMap<>();
-            card.put("id", course.getId());
+            card.put("id", course.getId() == null ? null : course.getId().toString());
             card.put("courseNum", course.getCourseNum());
             card.put("courseName", course.getCourseName());
             card.put("className", course.getClassName());
+            card.put("term", course.getTerm());
+            card.put("termId", course.getTermId() == null ? null : course.getTermId().toString());
+            card.put("period", course.getPeriod());
+            card.put("credit", course.getCredit());
             card.put("cover", course.getCover());
-            // creatorId 即该课程的任课教师ID；等 Auth 模块开放按 ID 查用户名的接口后，
-            // 在此处把 creatorId 换成真实 teacherName 即可（只改这一个文件）。
-            card.put("creatorId", course.getCreatorId());
-            card.put("teacherName", null);
+            card.put("creatorId", course.getCreatorId() == null ? null : course.getCreatorId().toString());
+            // 教师姓名从 course.teacherName 快照字段读取（建课时由 Service 层快照写入）
+            card.put("teacherName", course.getTeacherName());
             card.put("isTop", uc.getIsTop());
             card.put("sortWeight", uc.getSortWeight());
 
@@ -161,5 +164,55 @@ public class StudentCourseServiceImpl extends ServiceImpl<UserCourseMapper, User
             result.add(group);
         }
         return result;
+    }
+
+    /**
+     * 学生端课程详情：
+     *   1) 校验 studentId 是否为该课程的正式学生（user_course.role = 2）
+     *   2) 查询课程基本信息并组装返回
+     *   3) 统计该课程的学生人数（不含教师，只统计 role=2 的学生）
+     *   4) 教师姓名直接读 course.teacherName 快照字段
+     */
+    @Override
+    public Map<String, Object> getStudentCourseDetail(Long courseId, Long studentId) {
+        // 1. 校验学生身份：必须是 role=2 的正式成员
+        UserCourse relation = this.getOne(
+                new LambdaQueryWrapper<UserCourse>()
+                        .eq(UserCourse::getUserId, studentId)
+                        .eq(UserCourse::getCourseId, courseId)
+                        .eq(UserCourse::getRole, 2));
+        if (relation == null) {
+            return null;
+        }
+
+        // 2. 查询课程基本信息
+        Course course = courseMapper.selectById(courseId);
+        if (course == null) {
+            return null;
+        }
+
+        // 3. 统计该课程的学生人数（只统计 role=2 的学生）
+        Long studentCount = this.count(
+                new LambdaQueryWrapper<UserCourse>()
+                        .eq(UserCourse::getCourseId, courseId)
+                        .eq(UserCourse::getRole, 2));
+
+        // 4. 组装返回给前端的详情数据（学生端字段子集）
+        Map<String, Object> detail = new LinkedHashMap<>();
+        detail.put("id", course.getId() == null ? null : course.getId().toString());
+        detail.put("courseNum", course.getCourseNum());
+        detail.put("courseName", course.getCourseName());
+        detail.put("className", course.getClassName());
+        detail.put("term", course.getTerm());
+        detail.put("termId", course.getTermId() == null ? null : course.getTermId().toString());
+        detail.put("period", course.getPeriod());
+        detail.put("credit", course.getCredit());
+        detail.put("cover", course.getCover());
+        detail.put("status", course.getStatus());
+        // 教师姓名：直接读课程表的 teacherName 快照字段
+        detail.put("teacherName", course.getTeacherName());
+        // 学生人数（不含教师）
+        detail.put("memberCount", studentCount == null ? 0L : studentCount);
+        return detail;
     }
 }

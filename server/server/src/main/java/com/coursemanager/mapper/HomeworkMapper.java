@@ -30,4 +30,17 @@ public interface HomeworkMapper extends BaseMapper<Homework> {
      *               gradedCount, ungradedCount, unsubmittedCount
      */
     java.util.List<java.util.Map<String, Object>> selectTeacherHomeworkOverview(@org.apache.ibatis.annotations.Param("courseId") Long courseId);
+
+    /**
+     * 学生端：跨课程查询所有未完成作业（用于工作台"待办作业"）
+     * 联表 course + homework_submit，返回：homeworkId, title, courseName, courseId, deadline, status
+     * 筛选条件：status in (0, 1, 3) 即"未交/已提交待批/打回重做"，不包含已批改的(status=2)
+     *
+     * @param courseIdList 该学生选修的所有课程ID
+     * @param studentId 学生用户ID
+     * @return 待办作业列表
+     */
+    java.util.List<java.util.Map<String, Object>> selectStudentPendingHomeworks(
+            @org.apache.ibatis.annotations.Param("courseIdList") java.util.List<Long> courseIdList,
+            @org.apache.ibatis.annotations.Param("studentId") Long studentId);
 }

@@ -72,6 +72,37 @@ const getStudentCourseList = (studentId) => {
 }
 
 /**
+ * 获取课程详情（学生端）
+ * 重要：courseId 必须转 String，避免路径参数丢精度
+ * @param {string|number} courseId - 课程ID
+ * @param {string|number} studentId - 学生用户ID（可选，不传则由后端从 token 解析）
+ * @returns Promise 响应结果
+ */
+const getStudentCourseDetail = (courseId, studentId) => {
+  const params = studentId ? { studentId: String(studentId) } : {}
+  return request('get', `/course/student/detail/${String(courseId)}`, params)
+}
+
+/**
+ * 更新课程的可编辑信息（教师端：课程大纲 + 课程介绍）
+ * 重要：所有雪花 ID 必须以字符串形式提交
+ * @param {object} data - 格式 { teacherId?: string, courseId: string, syllabus?: string, intro?: string }
+ *   syllabus / intro 均为可选，null 表示不更新该字段
+ * @returns Promise 响应结果
+ */
+const updateCourseInfo = (data) => {
+  // 兜底：把 courseId / teacherId 全部转字符串，避免 JS Number 丢精度
+  const payload = { ...data }
+  if (payload.courseId !== undefined && payload.courseId !== null) {
+    payload.courseId = String(payload.courseId)
+  }
+  if (payload.teacherId !== undefined && payload.teacherId !== null) {
+    payload.teacherId = String(payload.teacherId)
+  }
+  return request('put', '/course/teacher/update-info', payload)
+}
+
+/**
  * 课程详情（通用入口：根据角色自动分派到教师端/学生端接口）
  *
  * 用法：传入当前用户角色和课程 ID，无需关心后端到底走哪条路径
@@ -114,7 +145,9 @@ export {
   saveCourseSort,
   toggleCourseTop,
   getTeacherCourseDetail,
+  updateCourseInfo,
   joinCourse,
   getStudentCourseList,
+  getStudentCourseDetail,
   getCourseDetail
 }

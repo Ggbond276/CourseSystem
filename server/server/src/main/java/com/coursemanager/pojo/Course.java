@@ -75,6 +75,22 @@ public class Course extends BaseBean<Course> {
     private String term;
 
     /**
+     * 学期ID（关联 term.id），新建课程时通过下拉选择得到，存入此字段
+     * 冗余字段 term（varchar）保留作为历史快照，便于历史数据回显
+     */
+    @TableField("term_id")
+    @JsonFormat(shape = JsonFormat.Shape.STRING)
+    private Long termId;
+
+    /**
+     * 学院ID（关联 department.id），新建课程时通过下拉选择得到，存入此字段
+     * 前端不允许再通过文本输入学院名
+     */
+    @TableField("department_id")
+    @JsonFormat(shape = JsonFormat.Shape.STRING)
+    private Long departmentId;
+
+    /**
      * 6位唯一加课码
      */
     @TableField("join_code")
@@ -87,10 +103,30 @@ public class Course extends BaseBean<Course> {
     private String cover;
 
     /**
+     * 课程大纲（JSON 数组，每项 {week, title, content, type}）
+     * 由 CourseDetail.vue 的"课程信息"Tab 渲染，允许教师编辑
+     */
+    @TableField("syllabus")
+    private String syllabus;
+
+    /**
+     * 课程介绍（长文本，纯文本即可）
+     * 由 CourseDetail.vue 的"课程介绍"卡片渲染，允许教师编辑
+     */
+    @TableField("intro")
+    private String intro;
+
+    /**
      * 创建课堂的教师ID
      */
     @TableField("creator_id")
     @JsonFormat(shape = JsonFormat.Shape.STRING)
     private Long creatorId;
+
+    /**
+     * 授课教师姓名（建课时从 user.name 快照，避免后续教师改名导致历史课程显示变化）
+     */
+    @TableField("teacher_name")
+    private String teacherName;
 
 }

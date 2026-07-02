@@ -7,8 +7,14 @@ import com.coursemanager.dto.CourseChangeDto;
 import com.coursemanager.lang.CourseCondition;
 import com.coursemanager.lang.PageQuery;
 import com.coursemanager.mapper.CourseMapper;
+import com.coursemanager.mapper.DepartmentMapper;
+import com.coursemanager.mapper.TermMapper;
 import com.coursemanager.mapper.UserCourseMapper;
+import com.coursemanager.mapper.UserMapper;
 import com.coursemanager.pojo.Course;
+import com.coursemanager.pojo.Department;
+import com.coursemanager.pojo.Term;
+import com.coursemanager.pojo.User;
 import com.coursemanager.pojo.UserCourse;
 import com.coursemanager.service.ICourseService;
 import com.github.pagehelper.PageHelper;
@@ -29,6 +35,15 @@ public class CourseServiceImpl extends ServiceImpl<CourseMapper, Course> impleme
 
     @Autowired
     private UserCourseMapper userCourseMapper;
+
+    @Autowired
+    private UserMapper userMapper;
+
+    @Autowired
+    private TermMapper termMapper;
+
+    @Autowired
+    private DepartmentMapper departmentMapper;
 
     @Override
     public PageInfo<Course> getPage(PageQuery query, CourseCondition condition) {
@@ -88,6 +103,24 @@ public class CourseServiceImpl extends ServiceImpl<CourseMapper, Course> impleme
         String joinCode = generateJoinCode();
         course.setJoinCode(joinCode);
         course.setStatus(1);
+        // 1.5 快照授课教师姓名：建课时把 user.name 写入 course.teacherName，
+        //     避免后续教师改名导致历史课程显示变化，也避免 list 接口每次 join user 表
+        //     如果传入的 course 已带 teacherName（外部已查询过），保留外部值；否则查 user 表兜底
+        if (course.getTeacherName() == null || course.getTeacherName().trim().isEmpty()) {
+            User creator = userMapper.selectById(creatorId);
+            if (creator != null && creator.getName() != null) {
+                course.setTeacherName(creator.getName());
+            }
+        }
+        // 1.6 兜底 term 字符串：如果前端只传了 termId 没传 term，根据 termId 查 displayName 回填
+        //     这样老的展示（直接读 course.term 字符串）仍然能渲染历史数据
+        if ((course.getTerm() == null || course.getTerm().trim().isEmpty())
+                && course.getTermId() != null) {
+            Term termEntity = termMapper.selectById(course.getTermId());
+            if (termEntity != null && termEntity.getDisplayName() != null) {
+                course.setTerm(termEntity.getDisplayName());
+            }
+        }
         // 2. 插入课程记录（MyBatis-Plus 会自动回填 id）
         boolean saved = this.save(course);
         if (!saved) {
@@ -145,12 +178,21 @@ public class CourseServiceImpl extends ServiceImpl<CourseMapper, Course> impleme
 
             // 组装单张课程卡片
             Map<String, Object> card = new LinkedHashMap<>();
-            card.put("id", course.getId());
+            card.put("id", course.getId() == null ? null : course.getId().toString());
             card.put("courseNum", course.getCourseNum());
             card.put("courseName", course.getCourseName());
             card.put("className", course.getClassName());
+            card.put("term", course.getTerm());
+            card.put("termId", course.getTermId() == null ? null : course.getTermId().toString());
+            card.put("termDisplayName", getTermDisplayName(course.getTermId()));
+            card.put("departmentId", course.getDepartmentId() == null ? null : course.getDepartmentId().toString());
+            card.put("departmentName", getDepartmentName(course.getDepartmentId()));
+            card.put("period", course.getPeriod());
+            card.put("credit", course.getCredit());
             card.put("joinCode", course.getJoinCode());
             card.put("cover", course.getCover());
+            card.put("status", course.getStatus());
+            card.put("teacherName", course.getTeacherName());
             card.put("isTop", uc.getIsTop());
             card.put("sortWeight", uc.getSortWeight());
 
@@ -267,7 +309,24 @@ public class CourseServiceImpl extends ServiceImpl<CourseMapper, Course> impleme
                 new LambdaQueryWrapper<UserCourse>()
                         .eq(UserCourse::getCourseId, courseId));
 
-        // 4. 组装返回给前端的详情数据
+        // 4. 查询创建课程的教师真实姓名（用于顶部"授课教师"展示）
+        //    课程可能换教师接手，但 creatorId 是创建者；先按 creatorId 查
+        //    若查不到则按 teacherId 兜底（即当前访问者本人）
+        String teacherName = null;
+        if (course.getCreatorId() != null) {
+            User creator = userMapper.selectById(course.getCreatorId());
+            if (creator != null) {
+                teacherName = creator.getName();
+            }
+        }
+        if (teacherName == null) {
+            User self = userMapper.selectById(teacherId);
+            if (self != null) {
+                teacherName = self.getName();
+            }
+        }
+
+        // 5. 组装返回给前端的详情数据
         //    注意：creatorId 是雪花算法生成的 19 位 Long，JS 解析会丢精度，
         //    因此在响应层手动转成 String，让前端拿到完整 ID。
         Map<String, Object> detail = new LinkedHashMap<>();
@@ -276,12 +335,45 @@ public class CourseServiceImpl extends ServiceImpl<CourseMapper, Course> impleme
         detail.put("courseName", course.getCourseName());
         detail.put("className", course.getClassName());
         detail.put("term", course.getTerm());
+        detail.put("termId", course.getTermId() == null ? null : course.getTermId().toString());
+        detail.put("termDisplayName", getTermDisplayName(course.getTermId()));
+        detail.put("departmentId", course.getDepartmentId() == null ? null : course.getDepartmentId().toString());
+        detail.put("departmentName", getDepartmentName(course.getDepartmentId()));
+        detail.put("period", course.getPeriod());
+        detail.put("credit", course.getCredit());
         detail.put("joinCode", course.getJoinCode());
         detail.put("cover", course.getCover());
+        detail.put("syllabus", course.getSyllabus());
+        detail.put("intro", course.getIntro());
         detail.put("status", course.getStatus());
         detail.put("creatorId", course.getCreatorId() == null ? null : course.getCreatorId().toString());
+        detail.put("teacherName", teacherName);
         detail.put("memberCount", memberCount == null ? 0L : memberCount);
         return detail;
+    }
+
+    @Override
+    public boolean updateCourseInfo(Long courseId, Long teacherId, String syllabus, String intro) {
+        // 1. 校验任教关系（防止教师改他人课程）
+        UserCourse relation = userCourseMapper.selectOne(
+                new LambdaQueryWrapper<UserCourse>()
+                        .eq(UserCourse::getUserId, teacherId)
+                        .eq(UserCourse::getCourseId, courseId)
+                        .eq(UserCourse::getRole, 1));
+        if (relation == null) {
+            throw new RuntimeException("课程不存在或您无权修改该课程");
+        }
+        // 2. 只更新非 null 字段（null 表示前端未传，保留数据库原值）
+        Course updateEntity = new Course();
+        updateEntity.setId(courseId);
+        if (syllabus != null) {
+            updateEntity.setSyllabus(syllabus);
+        }
+        if (intro != null) {
+            updateEntity.setIntro(intro);
+        }
+        int count = this.baseMapper.updateById(updateEntity);
+        return count > 0;
     }
 
     /**
@@ -308,5 +400,31 @@ public class CourseServiceImpl extends ServiceImpl<CourseMapper, Course> impleme
         } while (this.exists(new LambdaQueryWrapper<Course>()
                 .eq(Course::getJoinCode, code)));
         return code;
+    }
+
+    /**
+     * 根据 termId 查学期显示名（用于详情/列表接口拼装给前端）
+     * @param termId 学期ID（可为 null）
+     * @return displayName（如 "2024-2025 第一学期"），查不到返回 null
+     */
+    private String getTermDisplayName(Long termId) {
+        if (termId == null) {
+            return null;
+        }
+        Term term = termMapper.selectById(termId);
+        return term == null ? null : term.getDisplayName();
+    }
+
+    /**
+     * 根据 departmentId 查学院名（用于详情/列表接口拼装给前端）
+     * @param departmentId 学院ID（可为 null）
+     * @return name（如 "计算机学院"），查不到返回 null
+     */
+    private String getDepartmentName(Long departmentId) {
+        if (departmentId == null) {
+            return null;
+        }
+        Department dept = departmentMapper.selectById(departmentId);
+        return dept == null ? null : dept.getName();
     }
 }

@@ -28,6 +28,10 @@
               <el-icon><Calendar /></el-icon>
               {{ courseInfo.term }}
             </span>
+            <span v-if="courseInfo.departmentName" class="meta-item">
+              <el-icon><OfficeBuilding /></el-icon>
+              {{ courseInfo.departmentName }}
+            </span>
           </div>
           <div class="header-stats">
             <div class="stat-block">
@@ -39,12 +43,12 @@
               <div class="stat-label">学生人数</div>
             </div>
             <div class="stat-block">
-              <div class="stat-value">{{ stats.submitRate }}%</div>
+              <div class="stat-value">{{ stats.submitRate }}</div>
               <div class="stat-label">提交率</div>
             </div>
-            <div v-if="userStore.role === 'teacher'" class="stat-block">
-              <div class="stat-value">{{ courseInfo.joinCode }}</div>
-              <div class="stat-label">加课码</div>
+            <div v-if="userStore.role === 'teacher'" class="stat-block" style="cursor: pointer;" @click="copyJoinCode">
+              <div class="stat-value" :title="'点击复制'">{{ courseInfo.joinCode }}</div>
+              <div class="stat-label">加课码（点复制）</div>
             </div>
           </div>
         </div>
@@ -93,16 +97,36 @@
           <div v-if="displayHomeworks.length > 0" class="homework-grid">
             <el-card
               v-for="hw in displayHomeworks"
-              :key="hw.id"
+              :key="hw.homeworkId || hw.id"
               class="homework-card"
               shadow="hover"
             >
               <div class="hw-header">
-                <h4 class="hw-title">{{ hw.title }}</h4>
-                <el-tag :type="getHomeworkTagType(hw)" size="small">
+                <h4 class="hw-title">
+                  {{ hw.title }}
+                  <!-- 双重验证：标题后立即跟真实 ID + 标题里的 index，确保 HMR 生效 -->
+                  <span style="color:#e11d48; font-size:13px; margin-left:8px; font-family:monospace;">
+                    [#{{ homeworkList.indexOf(hw) + 1 }} | {{ hw.homeworkId || hw.id || 'NO_ID' }}]
+                  </span>
+                </h4>
+                <!-- 教师视角：显示批改进度；学生视角：显示个人提交状态 -->
+                <el-tag
+                  v-if="userStore.role === 'teacher'"
+                  :type="getHomeworkTagType(hw)"
+                  size="small"
+                >
                   {{ getHomeworkTagText(hw) }}
                 </el-tag>
+                <el-tag
+                  v-else
+                  :type="getStudentStatusTagType(hw.status)"
+                  size="small"
+                >
+                  {{ getStudentStatusText(hw.status) }}
+                </el-tag>
               </div>
+              <!-- 真实数据标识：每个卡片显示自己的数据库ID，方便学生核对是否跟后端一致 -->
+              <div class="hw-db-id">ID: {{ hw.homeworkId || hw.id }}</div>
               <p class="hw-desc">{{ hw.description }}</p>
               <div class="hw-meta">
                 <span class="meta-chip">
@@ -208,9 +232,17 @@
                 <div class="info-card-header">
                   <el-icon><List /></el-icon>
                   <span>课程大纲</span>
+                  <div style="flex: 1;" />
+                  <el-button
+                    v-if="userStore.role === 'teacher'"
+                    type="primary"
+                    text
+                    :icon="Plus"
+                    @click="openEditSyllabusDialog"
+                  >编辑大纲</el-button>
                 </div>
               </template>
-              <el-timeline>
+              <el-timeline v-if="courseSyllabus.length > 0">
                 <el-timeline-item
                   v-for="(item, index) in courseSyllabus"
                   :key="index"
@@ -222,6 +254,7 @@
                   <p class="syllabus-content">{{ item.content }}</p>
                 </el-timeline-item>
               </el-timeline>
+              <el-empty v-else :description="userStore.role === 'teacher' ? '暂无大纲，点击右上角【编辑大纲】添加' : '教师暂未填写大纲'" :image-size="80" />
             </el-card>
 
             <!-- 课程介绍 -->
@@ -230,9 +263,18 @@
                 <div class="info-card-header">
                   <el-icon><Reading /></el-icon>
                   <span>课程介绍</span>
+                  <div style="flex: 1;" />
+                  <el-button
+                    v-if="userStore.role === 'teacher'"
+                    type="primary"
+                    text
+                    :icon="Plus"
+                    @click="openEditIntroDialog"
+                  >编辑介绍</el-button>
                 </div>
               </template>
-              <p class="course-intro">{{ courseIntro }}</p>
+              <p v-if="courseIntro" class="course-intro">{{ courseIntro }}</p>
+              <el-empty v-else :description="userStore.role === 'teacher' ? '暂无介绍，点击右上角【编辑介绍】添加' : '教师暂未填写介绍'" :image-size="80" />
             </el-card>
           </div>
         </el-tab-pane>
@@ -362,11 +404,123 @@
         </el-button>
       </template>
     </el-dialog>
+
+    <!-- ===== 编辑课程大纲 对话框（教师） ===== -->
+    <el-dialog
+      v-model="editSyllabusVisible"
+      title="编辑课程大纲"
+      width="760px"
+      :close-on-click-modal="false"
+    >
+      <div style="margin-bottom: 12px; color: #6b7280; font-size: 13px;">
+        按周次填写课程大纲，每行包含周次、标题、内容、类型。保存后立即生效。
+      </div>
+      <el-form label-width="100px">
+        <div
+          v-for="(row, index) in editSyllabusRows"
+          :key="index"
+          class="syllabus-edit-row"
+        >
+          <el-form-item :label="`第 ${index + 1} 行`">
+            <div class="syllabus-edit-fields">
+              <el-input
+                v-model="row.week"
+                placeholder="周次，例如：第 1 周"
+                style="width: 140px;"
+                clearable
+              />
+              <el-select v-model="row.type" style="width: 140px;">
+                <!-- 5 个类型：中文标签 + 颜色预览色块，下拉里只显示中文，让用户看见颜色（hover 选项时预览色块） -->
+                <el-option label="重点" value="primary">
+                  <div class="syllabus-type-option">
+                    <span class="syllabus-type-dot syllabus-type-dot--primary"></span>
+                    <span>重点</span>
+                  </div>
+                </el-option>
+                <el-option label="掌握" value="success">
+                  <div class="syllabus-type-option">
+                    <span class="syllabus-type-dot syllabus-type-dot--success"></span>
+                    <span>掌握</span>
+                  </div>
+                </el-option>
+                <el-option label="挑战" value="warning">
+                  <div class="syllabus-type-option">
+                    <span class="syllabus-type-dot syllabus-type-dot--warning"></span>
+                    <span>挑战</span>
+                  </div>
+                </el-option>
+                <el-option label="测验" value="danger">
+                  <div class="syllabus-type-option">
+                    <span class="syllabus-type-dot syllabus-type-dot--danger"></span>
+                    <span>测验</span>
+                  </div>
+                </el-option>
+                <el-option label="信息" value="info">
+                  <div class="syllabus-type-option">
+                    <span class="syllabus-type-dot syllabus-type-dot--info"></span>
+                    <span>信息</span>
+                  </div>
+                </el-option>
+              </el-select>
+              <el-input
+                v-model="row.title"
+                placeholder="标题"
+                style="flex: 1;"
+                clearable
+              />
+              <el-input
+                v-model="row.content"
+                placeholder="内容描述"
+                style="flex: 2;"
+                clearable
+              />
+              <el-button
+                type="danger"
+                text
+                :icon="Plus"
+                style="transform: rotate(45deg);"
+                @click="removeSyllabusRow(index)"
+              />
+            </div>
+          </el-form-item>
+        </div>
+        <el-button type="primary" plain :icon="Plus" @click="addSyllabusRow">
+          新增一行
+        </el-button>
+      </el-form>
+      <template #footer>
+        <el-button @click="editSyllabusVisible = false">取 消</el-button>
+        <el-button type="primary" :loading="savingInfo" @click="saveSyllabus">
+          保 存
+        </el-button>
+      </template>
+    </el-dialog>
+
+    <!-- ===== 编辑课程介绍 对话框（教师） ===== -->
+    <el-dialog
+      v-model="editIntroVisible"
+      title="编辑课程介绍"
+      width="640px"
+      :close-on-click-modal="false"
+    >
+      <el-input
+        v-model="editIntroDraft"
+        type="textarea"
+        :rows="10"
+        placeholder="请输入课程介绍，例如：本课程的目标、先修要求、教学方式等"
+      />
+      <template #footer>
+        <el-button @click="editIntroVisible = false">取 消</el-button>
+        <el-button type="primary" :loading="savingInfo" @click="saveIntro">
+          保 存
+        </el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import {
@@ -376,7 +530,7 @@ import {
 } from '@element-plus/icons-vue'
 import { useUserStore } from '@/store/user'
 import { createHomework, submitHomework, getTeacherHomeworkList, getStudentHomeworkList } from '@/api/homework'
-import { getTeacherCourseDetail } from '@/api/course'
+import { getTeacherCourseDetail, getStudentCourseDetail, updateCourseInfo } from '@/api/course'
 
 const route = useRoute()
 const router = useRouter()
@@ -385,40 +539,49 @@ const userStore = useUserStore()
 // 当前路由参数里的 courseId
 const courseId = route.params.id
 
-// ===== 顶部课程信息（mock） =====
+// ===== 顶部课程信息：初值先用空字符串挂载，后端返回后再覆盖 =====
 const courseInfo = ref({
   id: courseId,
-  courseNum: 'CS-101',
-  courseName: '计算机科学导论',
-  className: '2024级计算机1班',
-  term: '2024-2025 第一学期',
-  period: 48,
-  credit: 3.0,
-  teacherName: '张教授',
-  joinCode: '9B3299',
+  courseNum: '',
+  courseName: '',
+  className: '',
+  term: '',
+  termDisplayName: '',
+  departmentName: '',
+  period: 0,
+  credit: 0,
+  teacherName: '',
+  joinCode: '',
+  syllabus: '',
+  intro: '',
   coverGradient: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)'
 })
 
-// ===== 顶部统计数字（mock） =====
+// ===== 顶部统计数字：所有数字由后端或前端计算得到，不再硬编码 =====
+// homeworkCount 用作业列表的长度实时算（避免维护冗余字段）
+// studentCount 用后端返回的 memberCount（教师+学生+助教总数，每 10s 轮询刷新）
+// submitRate 后端暂未提供统计接口 → 占位为"-"，避免给用户错误预期
 const stats = ref({
-  homeworkCount: 6,
-  studentCount: 42,
-  submitRate: 88
+  homeworkCount: 0,
+  studentCount: 0,
+  submitRate: '-'
 })
 
-// ===== 课程大纲（mock） =====
-const courseSyllabus = [
-  { week: '第 1 周', title: '计算机系统概述', content: '了解计算机发展史、分类与应用领域', type: 'primary' },
-  { week: '第 2 周', title: '数制与编码', content: '二进制、八进制、十六进制，原码/反码/补码', type: 'success' },
-  { week: '第 3 周', title: '数据结构基础', content: '数组、链表、栈、队列的概念与基本操作', type: 'warning' },
-  { week: '第 4 周', title: '算法分析初步', content: '时间复杂度、空间复杂度的度量方法', type: 'danger' },
-  { week: '第 5-8 周', title: '程序设计与实践', content: '通过 Python 实现常见数据结构与算法', type: 'primary' },
-  { week: '第 9 周', title: '期中测验', content: '闭卷笔试 + 上机测试', type: 'info' },
-  { week: '第 10-16 周', title: '专题与项目实践', content: '小组项目开发，覆盖真实业务场景', type: 'success' }
-]
+// ===== 课程大纲（真实数据）=====
+// 后端把 syllabus 字段存为 JSON 字符串；解析失败时回退为空数组
+const courseSyllabus = ref([])
 
-// ===== 课程介绍（mock） =====
-const courseIntro = '本课程是计算机专业的入门课程，旨在帮助学生建立对计算机科学的整体认知。通过理论讲解与编程实践相结合的方式，使学生掌握计算机系统的基本组成、数据结构与算法的基础知识，培养计算思维与问题解决能力。课程强调动手实践，每周配有实验环节，鼓励学生通过实际编程加深理解。'
+// ===== 课程介绍（真实数据）=====
+const courseIntro = ref('')
+
+// ===== 编辑课程大纲 / 介绍 对话框状态（教师端）=====
+const editSyllabusVisible = ref(false)
+const editIntroVisible = ref(false)
+const savingInfo = ref(false)
+// 大纲编辑：用本地数组操作，最后 JSON.stringify 提交
+const editSyllabusRows = ref([])
+// 介绍编辑：直接绑字符串
+const editIntroDraft = ref('')
 
 // ===== Tab 状态 =====
 const activeTab = ref('homework')
@@ -427,107 +590,13 @@ const activeTab = ref('homework')
 const homeworkSearch = ref('')
 const homeworkStatusFilter = ref('')
 
-// ===== 作业列表 mock 数据（教师视角 + 学生视角合一） =====
-const homeworkList = ref([
-  {
-    id: 'HW-001',
-    title: '第一章 课后练习',
-    description: '请完成课本第 1 章课后习题 1-10，拍照上传',
-    type: 1,
-    activityTag: '课后',
-    totalScore: 100,
-    forbidLate: 1,
-    deadline: '2026-07-15 23:59:59',
-    isOver: false,
-    // 教师视角
-    gradedCount: 18,
-    ungradedCount: 4,
-    unsubmittedCount: 20,
-    // 学生视角
-    status: 1,
-    score: null
-  },
-  {
-    id: 'HW-002',
-    title: '实验报告 1：链表实现',
-    description: '用 Python 实现单链表、循环链表，并完成测试用例',
-    type: 1,
-    activityTag: '课中',
-    totalScore: 50,
-    forbidLate: 0,
-    deadline: '2026-07-08 23:59:59',
-    isOver: false,
-    gradedCount: 10,
-    ungradedCount: 12,
-    unsubmittedCount: 20,
-    status: 0,
-    score: null
-  },
-  {
-    id: 'HW-003',
-    title: '小组项目：图书管理系统',
-    description: '5 人一组，完成一个完整的图书管理系统（CLI 版）',
-    type: 2,
-    activityTag: '课后',
-    totalScore: 200,
-    forbidLate: 1,
-    deadline: '2026-06-30 23:59:59',
-    isOver: true,
-    gradedCount: 42,
-    ungradedCount: 0,
-    unsubmittedCount: 0,
-    status: 2,
-    score: 185
-  },
-  {
-    id: 'HW-004',
-    title: '第二章 数制转换练习',
-    description: '完成进制转换相关题目，提交答题照片',
-    type: 1,
-    activityTag: '课后',
-    totalScore: 100,
-    forbidLate: 0,
-    deadline: '2026-06-25 23:59:59',
-    isOver: true,
-    gradedCount: 42,
-    ungradedCount: 0,
-    unsubmittedCount: 0,
-    status: 2,
-    score: 92
-  },
-  {
-    id: 'HW-005',
-    title: '课前预习：算法复杂度',
-    description: '阅读教材第 4 章，整理思维导图并提交',
-    type: 1,
-    activityTag: '课前',
-    totalScore: 30,
-    forbidLate: 1,
-    deadline: '2026-07-20 23:59:59',
-    isOver: false,
-    gradedCount: 5,
-    ungradedCount: 2,
-    unsubmittedCount: 35,
-    status: 0,
-    score: null
-  },
-  {
-    id: 'HW-006',
-    title: '期末综合项目',
-    description: '独立完成一个小型信息管理系统（任选题材）',
-    type: 1,
-    activityTag: '期末',
-    totalScore: 300,
-    forbidLate: 1,
-    deadline: '2026-08-10 23:59:59',
-    isOver: false,
-    gradedCount: 0,
-    ungradedCount: 0,
-    unsubmittedCount: 42,
-    status: 0,
-    score: null
-  }
-])
+// ===== 作业列表：初值空数组，由后端填充 =====
+// 字段说明：homeworkId / title / description / type / activityTag / totalScore /
+//          forbidLate / deadline / isOver / gradedCount / ungradedCount / unsubmittedCount
+const homeworkList = ref([])
+
+// ===== 10s 轮询计时器句柄 =====
+let pollTimerId = null
 
 // ===== 计算属性：过滤后的作业列表 =====
 const displayHomeworks = computed(() => {
@@ -722,44 +791,239 @@ const handleSubmitHomework = async () => {
 }
 
 onMounted(async () => {
-  // 优先调真实接口，失败时保留 mock 兜底
-  try {
-    const teacherId = userStore.userId
-    const res = await getTeacherCourseDetail(courseId, Number(teacherId))
-    if (res && res.data && res.data.code === 200 && res.data.data) {
-      const data = res.data.data
-      // 用后端返回的真实数据填充页面
-      courseInfo.value = {
-        ...courseInfo.value,
-        courseNum: data.courseNum || courseInfo.value.courseNum,
-        courseName: data.courseName || courseInfo.value.courseName,
-        className: data.className || courseInfo.value.className,
-        term: data.term || courseInfo.value.term,
-        period: data.period || courseInfo.value.period,
-        credit: data.credit || courseInfo.value.credit,
-        teacherName: data.teacherName || courseInfo.value.teacherName,
-        joinCode: data.joinCode || courseInfo.value.joinCode,
-        coverGradient: data.coverGradient || courseInfo.value.coverGradient
-      }
-      // 顶部统计数字
-      if (data.memberCount !== undefined) {
-        stats.value.studentCount = data.memberCount
-      }
-    }
-  } catch (e) {
-    console.warn('课程详情接口调用失败，使用 mock 数据兜底:', e)
-  }
-  // 同时尝试拉作业列表（按角色）
-  try {
-    const api = userStore.role === 'teacher' ? getTeacherHomeworkList : getStudentHomeworkList
-    const res = await api({ courseId })
-    if (res?.data?.code === 200 && Array.isArray(res.data.data)) {
-      homeworkList.value = res.data.data
-    }
-  } catch (e) {
-    console.warn('作业列表接口调用失败，使用 mock 数据', e)
+  // 1. 进入页面：拉一次课程详情 + 作业列表
+  await Promise.all([loadCourseDetail(), loadHomeworkList()])
+  // 2. 启动 10s 轮询，实时刷新学生人数（memberCount）
+  //    仅教师端轮询；学生端不轮询（学生加入课程后也只会变自己的视图，本页无变化）
+  if (userStore.role === 'teacher') {
+    pollTimerId = setInterval(() => {
+      loadCourseDetail()
+    }, 10000)
   }
 })
+
+// 组件销毁时清理轮询定时器，避免内存泄漏
+onBeforeUnmount(() => {
+  if (pollTimerId !== null) {
+    clearInterval(pollTimerId)
+    pollTimerId = null
+  }
+})
+
+/**
+ * 加载课程详情（教师端走 /course/teacher/detail/{id}，学生端后端暂未实现 → 走 mock 兜底）
+ * 任何字段缺失都保留空字符串而非 undefined，避免模板渲染 [object Object]
+ */
+const loadCourseDetail = async () => {
+  try {
+    if (userStore.role === 'teacher') {
+      // 教师端：走教师专用接口
+      const teacherId = userStore.userId
+      const res = await getTeacherCourseDetail(courseId, teacherId)
+      if (res && res.data && res.data.code === 200 && res.data.data) {
+        const data = res.data.data
+        courseInfo.value = {
+          ...courseInfo.value,
+          courseNum: data.courseNum || courseInfo.value.courseNum,
+          courseName: data.courseName || courseInfo.value.courseName,
+          className: data.className || courseInfo.value.className,
+          term: data.term || courseInfo.value.term,
+          termDisplayName: data.termDisplayName || courseInfo.value.termDisplayName,
+          departmentName: data.departmentName || courseInfo.value.departmentName,
+          period: data.period || 0,
+          credit: data.credit || 0,
+          teacherName: data.teacherName || '未知教师',
+          joinCode: data.joinCode || '',
+          syllabus: data.syllabus || '',
+          intro: data.intro || '',
+          coverGradient: courseInfo.value.coverGradient
+        }
+        stats.value.studentCount = data.memberCount || 0
+        if (courseInfo.value.syllabus) {
+          try {
+            const parsed = JSON.parse(courseInfo.value.syllabus)
+            courseSyllabus.value = Array.isArray(parsed) ? parsed : []
+          } catch (parseError) {
+            courseSyllabus.value = []
+          }
+        } else {
+          courseSyllabus.value = []
+        }
+        courseIntro.value = courseInfo.value.intro || ''
+      }
+    } else {
+      // 学生端：走学生专用接口
+      const res = await getStudentCourseDetail(courseId, userStore.userId)
+      if (res && res.data && res.data.code === 200 && res.data.data) {
+        const data = res.data.data
+        courseInfo.value = {
+          ...courseInfo.value,
+          courseNum: data.courseNum || '',
+          courseName: data.courseName || '',
+          className: data.className || '',
+          term: data.term || '',
+          period: data.period || 0,
+          credit: data.credit || 0,
+          teacherName: data.teacherName || '暂无教师',
+          studentCount: data.memberCount || 0,
+          status: data.status || 1
+        }
+        // 学生人数
+        stats.value.studentCount = data.memberCount || 0
+      }
+    }
+  } catch (e) {
+    console.warn('[课程详情] 接口调用失败:', e)
+  }
+}
+
+/**
+ * 加载作业列表（按角色分派到教师端 / 学生端接口）
+ * 后端字段：homeworkId / title / description / type / activityTag / totalScore /
+ *          forbidLate / deadline / isOver / gradedCount / ungradedCount / unsubmittedCount
+ * 字段名为 homeworkId（非 id），前端展示和路由跳转时统一用 homeworkId
+ */
+const loadHomeworkList = async () => {
+  try {
+    const api = userStore.role === 'teacher' ? getTeacherHomeworkList : getStudentHomeworkList
+    const res = await api({ courseId: String(courseId) })
+    if (res?.data?.code === 200 && Array.isArray(res.data.data)) {
+      homeworkList.value = res.data.data
+      // 作业总数用列表长度实时算，避免后端冗余字段
+      stats.value.homeworkCount = homeworkList.value.length
+      // ★ 调试探针：把 homeworkList 的实际内容打到控制台，方便排查"所有卡片 ID 都一样"的诡异问题
+      console.log('[CourseDetail] 作业列表实际数据:', JSON.stringify(homeworkList.value))
+    } else {
+      homeworkList.value = []
+      stats.value.homeworkCount = 0
+    }
+  } catch (e) {
+    console.warn('[作业列表] 接口调用失败:', e)
+    homeworkList.value = []
+    stats.value.homeworkCount = 0
+  }
+}
+
+/**
+ * 打开"编辑课程大纲"对话框
+ * 把后端的 JSON 字符串解析回数组，让教师逐行编辑
+ */
+const openEditSyllabusDialog = () => {
+  editSyllabusRows.value = courseSyllabus.value.length > 0
+    ? JSON.parse(JSON.stringify(courseSyllabus.value))
+    : [{ week: '', title: '', content: '', type: 'primary' }]
+  editSyllabusVisible.value = true
+}
+
+/**
+ * 大纲编辑：新增一行
+ */
+const addSyllabusRow = () => {
+  editSyllabusRows.value.push({ week: '', title: '', content: '', type: 'primary' })
+}
+
+/**
+ * 大纲编辑：删除一行
+ */
+const removeSyllabusRow = (index) => {
+  editSyllabusRows.value.splice(index, 1)
+}
+
+/**
+ * 大纲编辑：保存（提交到后端）
+ */
+const saveSyllabus = async () => {
+  // 1. 校验：每行必须有 week + title
+  for (let i = 0; i < editSyllabusRows.value.length; i++) {
+    const row = editSyllabusRows.value[i]
+    if (!row.week || !row.week.trim()) {
+      ElMessage.warning(`第 ${i + 1} 行周次不能为空`)
+      return
+    }
+    if (!row.title || !row.title.trim()) {
+      ElMessage.warning(`第 ${i + 1} 行标题不能为空`)
+      return
+    }
+  }
+  savingInfo.value = true
+  try {
+    const json = JSON.stringify(editSyllabusRows.value)
+    const res = await updateCourseInfo({
+      teacherId: String(userStore.userId),
+      courseId: String(courseId),
+      syllabus: json
+    })
+    if (res?.data?.code === 200) {
+      ElMessage.success('课程大纲已更新')
+      editSyllabusVisible.value = false
+      // 立即刷新本地数据，避免等 10s 轮询
+      courseSyllabus.value = JSON.parse(json)
+      courseInfo.value.syllabus = json
+    } else {
+      ElMessage.error(res?.data?.msg || '更新失败')
+    }
+  } catch (e) {
+    console.error('[保存大纲] 异常:', e)
+    ElMessage.error('网络异常，请稍后重试')
+  } finally {
+    savingInfo.value = false
+  }
+}
+
+/**
+ * 打开"编辑课程介绍"对话框
+ */
+const openEditIntroDialog = () => {
+  editIntroDraft.value = courseIntro.value || ''
+  editIntroVisible.value = true
+}
+
+/**
+ * 介绍编辑：保存
+ */
+const saveIntro = async () => {
+  savingInfo.value = true
+  try {
+    const res = await updateCourseInfo({
+      teacherId: String(userStore.userId),
+      courseId: String(courseId),
+      intro: editIntroDraft.value
+    })
+    if (res?.data?.code === 200) {
+      ElMessage.success('课程介绍已更新')
+      editIntroVisible.value = false
+      courseIntro.value = editIntroDraft.value
+      courseInfo.value.intro = editIntroDraft.value
+    } else {
+      ElMessage.error(res?.data?.msg || '更新失败')
+    }
+  } catch (e) {
+    console.error('[保存介绍] 异常:', e)
+    ElMessage.error('网络异常，请稍后重试')
+  } finally {
+    savingInfo.value = false
+  }
+}
+
+/**
+ * 复制加课码到剪贴板
+ */
+const copyJoinCode = async () => {
+  if (!courseInfo.value.joinCode) return
+  try {
+    await navigator.clipboard.writeText(courseInfo.value.joinCode)
+    ElMessage.success('加课码已复制')
+  } catch (e) {
+    // 浏览器不支持 Clipboard API 时降级为选中文本
+    const input = document.createElement('input')
+    input.value = courseInfo.value.joinCode
+    document.body.appendChild(input)
+    input.select()
+    document.execCommand('copy')
+    document.body.removeChild(input)
+    ElMessage.success('加课码已复制')
+  }
+}
 </script>
 
 <style scoped>
@@ -886,6 +1150,14 @@ onMounted(async () => {
   color: #1f2937;
   margin: 0;
 }
+/* 真实数据库 ID 标识：每个卡片显示自己的 ID，与后端一一对应 */
+.hw-db-id {
+  font-size: 11px;
+  color: #94a3b8;
+  margin-top: 4px;
+  font-family: 'SF Mono', Menlo, Consolas, monospace;
+  word-break: break-all;
+}
 .hw-desc {
   font-size: 13px;
   color: #6b7280;
@@ -977,6 +1249,41 @@ onMounted(async () => {
   line-height: 1.8;
   margin: 0;
 }
+
+/* ===== 大纲编辑行样式 ===== */
+.syllabus-edit-row {
+  border: 1px dashed #e5e7eb;
+  border-radius: 8px;
+  padding: 8px 12px;
+  margin-bottom: 8px;
+  background: #fafbfc;
+}
+.syllabus-edit-fields {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* 编辑大纲弹窗里"类型"下拉选项前的颜色预览块 */
+.syllabus-type-option {
+  display: inline-flex;
+  align-items: center;
+  line-height: 1;
+}
+.syllabus-type-dot {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  margin-right: 8px;
+  vertical-align: middle;
+}
+.syllabus-type-dot--primary { background-color: #409eff; }
+.syllabus-type-dot--success { background-color: #67c23a; }
+.syllabus-type-dot--warning { background-color: #e6a23c; }
+.syllabus-type-dot--danger  { background-color: #f56c6c; }
+.syllabus-type-dot--info    { background-color: #909399; }
 
 .readonly-field {
   font-size: 13px;

@@ -36,4 +36,18 @@ public interface IStudentHomeworkService extends IService<Homework> {
      * @param attachments 附件 JSON 字符串
      */
     void submitHomework(Long homeworkId, Long studentId, String content, String attachments);
+
+    /**
+     * 学生工作台：跨课程查询所有需要关注的待办作业
+     * @param studentId 学生用户ID
+     * @return 待办作业列表（包含作业ID、标题、所属课程名、截止时间、提交状态）
+     */
+    java.util.List<java.util.Map<String, Object>> getStudentPendingHomeworks(Long studentId);
+
+    /**
+     * 学生工作台统计：拉取"已批改作业"的累计得分
+     * @param studentId 学生用户ID
+     * @return 该学生所有已批改作业的总分（无任何记录返回 0）
+     */
+    Integer getStudentTotalScoredScore(Long studentId);
 }

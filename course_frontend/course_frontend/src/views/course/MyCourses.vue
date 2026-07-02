@@ -163,8 +163,40 @@
         <el-form-item label="教学班级" prop="className">
           <el-input v-model="createForm.className" placeholder="例如 2024级软件工程1班" />
         </el-form-item>
-        <el-form-item label="学年学期" prop="term">
-          <el-input v-model="createForm.term" placeholder="例如 2024-2025 第一学期" />
+        <el-form-item label="学年学期" prop="termId">
+          <el-select
+            v-model="createForm.termId"
+            placeholder="请选择学年学期（由学校统一发布）"
+            style="width: 100%;"
+            filterable
+          >
+            <el-option
+              v-for="t in termOptions"
+              :key="t.id"
+              :label="t.displayName"
+              :value="String(t.id)"
+            >
+              <span style="float: left;">{{ t.displayName }}</span>
+              <span style="float: right; color: #999; font-size: 12px; margin-left: 12px;">
+                {{ t.schoolYear }}
+              </span>
+            </el-option>
+          </el-select>
+        </el-form-item>
+        <el-form-item label="所属学院" prop="departmentId">
+          <el-select
+            v-model="createForm.departmentId"
+            placeholder="请选择所属学院（由学校统一发布）"
+            style="width: 100%;"
+            filterable
+          >
+            <el-option
+              v-for="d in departmentOptions"
+              :key="d.id"
+              :label="`${d.name}（${d.code}）`"
+              :value="String(d.id)"
+            />
+          </el-select>
         </el-form-item>
         <el-form-item label="学时" prop="period">
           <el-input-number v-model="createForm.period" :min="1" :max="500" />
@@ -221,6 +253,7 @@ import {
   saveCourseSort,
   toggleCourseTop
 } from '@/api/course'
+import { getTermList, getDepartmentList } from '@/api/dict'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -428,11 +461,18 @@ const loadCourses = async () => {
 const createDialogVisible = ref(false)
 const creating = ref(false)
 const createFormRef = ref(null)
+
+// 学期字典选项（学年+学期 由学校统一发布，禁止文本输入）
+const termOptions = ref([])
+// 学院字典选项（学院名 由学校统一发布，禁止文本输入）
+const departmentOptions = ref([])
+
 const createForm = ref({
   courseNum: '',
   courseName: '',
   className: '',
-  term: '',
+  termId: '',         // 改为选 term.id（字符串雪花 ID）
+  departmentId: '',   // 选 department.id（字符串雪花 ID）
   period: 48,
   credit: 3.0
 })
@@ -443,10 +483,43 @@ const createRules = {
   className: [
     { required: true, message: '请输入教学班级', trigger: 'blur' }
   ],
-  term: [
-    { required: true, message: '请输入学年学期', trigger: 'blur' }
+  termId: [
+    { required: true, message: '请选择学年学期', trigger: 'change' }
+  ],
+  departmentId: [
+    { required: true, message: '请选择所属学院', trigger: 'change' }
   ]
 }
+
+/**
+ * 加载字典数据（学期、学院）
+ * 教师端、学生端都需要用到，所以放公共区
+ */
+const loadDictionaries = async () => {
+  try {
+    const termRes = await getTermList()
+    if (termRes?.data?.code === 200 && Array.isArray(termRes.data.data)) {
+      termOptions.value = termRes.data.data
+    } else {
+      termOptions.value = []
+    }
+  } catch (e) {
+    console.warn('[字典] 加载学期字典失败:', e)
+    termOptions.value = []
+  }
+  try {
+    const deptRes = await getDepartmentList()
+    if (deptRes?.data?.code === 200 && Array.isArray(deptRes.data.data)) {
+      departmentOptions.value = deptRes.data.data
+    } else {
+      departmentOptions.value = []
+    }
+  } catch (e) {
+    console.warn('[字典] 加载学院字典失败:', e)
+    departmentOptions.value = []
+  }
+}
+
 const openCreateDialog = () => {
   createDialogVisible.value = true
   // 重置表单（保留 period / credit 默认值）
@@ -454,9 +527,14 @@ const openCreateDialog = () => {
     courseNum: '',
     courseName: '',
     className: '',
-    term: '',
+    termId: '',
+    departmentId: '',
     period: 48,
     credit: 3.0
+  }
+  // 打开弹窗时再确保一次字典已加载（避免空下拉）
+  if (termOptions.value.length === 0 || departmentOptions.value.length === 0) {
+    loadDictionaries()
   }
 }
 const handleCreateSubmit = async () => {
@@ -478,7 +556,8 @@ const handleCreateSubmit = async () => {
         courseNum: createForm.value.courseNum || null,
         courseName: createForm.value.courseName,
         className: createForm.value.className,
-        term: createForm.value.term,
+        termId: createForm.value.termId,
+        departmentId: createForm.value.departmentId,
         period: createForm.value.period,
         credit: createForm.value.credit,
         cover: null
@@ -688,7 +767,9 @@ const handleToggleTop = async (course) => {
 
 // 页面挂载：加载真实课程列表
 onMounted(() => {
+  // 课程列表 + 字典（学期 / 学院）一并加载
   loadCourses()
+  loadDictionaries()
 })
 </script>
 

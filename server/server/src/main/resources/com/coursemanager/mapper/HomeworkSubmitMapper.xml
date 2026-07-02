@@ -18,6 +18,18 @@
         <result column="update_time" property="updateTime" />
     </resultMap>
 
+    <!-- 教师批阅大厅专用 ResultMap：明确映射每个列，避免 MyBatis 对 status 列的自动类型推断异常 -->
+    <resultMap id="teacherSubmitMap" type="java.util.LinkedHashMap">
+        <id column="submitId" property="submitId" />
+        <result column="studentName" property="studentName" />
+        <result column="studentAccount" property="studentAccount" />
+        <result column="submitStatus" property="status" />
+        <result column="submitTime" property="submitTime" />
+        <result column="similarity" property="similarity" />
+        <result column="wordCount" property="wordCount" />
+        <result column="score" property="score" />
+    </resultMap>
+
     <!-- 条件查询作业提交记录 -->
     <select id="selectCondition" resultMap="basemap" parameterType="com.coursemanager.lang.HomeworkSubmitCondition">
         SELECT * FROM homework_submit
@@ -55,31 +67,17 @@
 
     <!-- 教师批阅大厅：联表 user 拿到学生姓名、学号，支持 status / studentName 筛选 -->
     <!-- 字段对齐 B1_API.md 接口 3 的 data[] 每一项 -->
-    <select id="selectSubmitListForTeacher" resultType="java.util.LinkedHashMap">
-        SELECT
-            hs.id                                AS submitId,
-            u.name                               AS studentName,
-            u.account                            AS studentAccount,
-            hs.status                            AS status,
-            hs.submit_time                       AS submitTime,
-            hs.similarity                        AS similarity,
-            hs.word_count                        AS wordCount,
-            hs.score                             AS score
+    <select id="selectSubmitListForTeacher"
+            resultType="com.coursemanager.pojo.HomeworkSubmit">
+        SELECT hs.id, hs.homework_id, hs.student_id, hs.status,
+               hs.submit_time, hs.score, hs.similarity, hs.word_count
         FROM homework_submit hs
-        -- INNER JOIN：只显示已经有提交记录的学生行
-        -- 老师批阅大厅关注的是"谁交了/谁没交"，但未交的占位记录没有 user 关联意义，
-        -- 此处先实现"已存在的提交记录"列表，未交学生通过接口 2 的 unsubmittedCount 统计即可
-        INNER JOIN user u ON u.id = hs.student_id
         <where>
             hs.homework_id = #{homeworkId}
-            <if test="status != null">
-                AND hs.status = #{status}
-            </if>
-            <if test="studentName != null and studentName != ''">
-                AND u.name LIKE CONCAT('%', #{studentName}, '%')
+            <if test="filterStatus != null">
+                AND hs.status = #{filterStatus}
             </if>
         </where>
-        -- 排序：先按状态升序（让"未批阅"的靠前，方便老师批），再按提交时间倒序
         ORDER BY hs.status ASC, hs.submit_time DESC
     </select>
 
@@ -119,5 +117,17 @@
         submit_time, score, teacher_comment, similarity, word_count,
         create_time, update_time
     </sql>
+
+    <!--
+        学生工作台统计：累加所有 status=2（已批改）的作业分数
+        COALESCE 兜底，没有已批改记录时返回 0 而非 NULL
+    -->
+    <select id="sumScoredScoreByStudentId" resultType="java.lang.Integer">
+        SELECT COALESCE(SUM(score), 0)
+        FROM homework_submit
+        WHERE student_id = #{studentId}
+          AND status = 2
+          AND score IS NOT NULL
+    </select>
 
 </mapper>

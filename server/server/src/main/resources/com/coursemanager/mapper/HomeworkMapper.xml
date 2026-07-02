@@ -47,22 +47,51 @@
         SELECT
             h.id AS homeworkId,
             h.title AS title,
+            h.description AS description,
+            h.type AS type,
             h.activity_tag AS activityTag,
-            h.deadline AS deadline,
             h.total_score AS totalScore,
+            h.forbid_late AS forbidLate,
+            h.deadline AS deadline,
             -- 已批改数：status = 2
             COALESCE(SUM(CASE WHEN hs.status = 2 THEN 1 ELSE 0 END), 0) AS gradedCount,
             -- 待批改数：status = 1
             COALESCE(SUM(CASE WHEN hs.status = 1 THEN 1 ELSE 0 END), 0) AS ungradedCount,
-            -- 未提交数：status = 0
-            COALESCE(SUM(CASE WHEN hs.status = 0 THEN 1 ELSE 0 END), 0) AS unsubmittedCount
+            -- 课程总选课人数：从 user_course 表统计 role=2（学生）的记录数
+            (SELECT COUNT(*) FROM user_course uc WHERE uc.course_id = h.course_id AND uc.role = 2) AS totalCount
         FROM homework h
         -- LEFT JOIN 保证即使这门课还没有任何提交记录，作业行也能出现在结果里
         LEFT JOIN homework_submit hs ON hs.homework_id = h.id
         WHERE h.course_id = #{courseId}
-        GROUP BY h.id, h.title, h.activity_tag, h.deadline, h.total_score
+        GROUP BY h.id, h.title, h.description, h.type, h.activity_tag, h.total_score, h.forbid_late, h.deadline, h.publish_time
         -- 按发布时间倒序：最新作业在最上面（与 B_homework.md 列表约定一致）
         ORDER BY h.publish_time DESC, h.id DESC
+    </select>
+
+    <!-- 学生端：跨课程查询所有未完成作业（用于工作台"待办作业"） -->
+    <!-- 筛选 status in (0, 1, 3)：未交 / 已提交待批 / 打回重做；排除已批改(status=2) -->
+    <select id="selectStudentPendingHomeworks" resultType="java.util.LinkedHashMap">
+        SELECT
+            h.id                    AS homeworkId,
+            h.title                 AS title,
+            c.course_name           AS courseName,
+            h.course_id             AS courseId,
+            h.deadline              AS deadline,
+            -- status 逻辑：有提交记录则用提交记录的 status，没有则默认 0（未交）
+            CASE WHEN hs.id IS NOT NULL THEN hs.status ELSE 0 END AS status
+        FROM homework h
+        INNER JOIN course c ON c.id = h.course_id
+        LEFT JOIN homework_submit hs
+            ON hs.homework_id = h.id
+            AND hs.student_id = #{studentId}
+        WHERE h.course_id IN
+            <foreach collection="courseIdList" item="cid" open="(" separator="," close=")">
+                #{cid}
+            </foreach>
+        -- 只展示"需要学生关注"的状态：未交(0)、已提交待批(1)、打回重做(3)
+        AND (hs.status IS NULL OR hs.status IN (0, 1, 3))
+        -- 未截止或允许补交的才展示（已截止但被 forbit_late=0 允许补交的也保留）
+        ORDER BY h.deadline ASC, h.id ASC
     </select>
 
 </mapper>

@@ -31,4 +31,12 @@ public interface IStudentCourseService extends IService<UserCourse> {
      * @return 分组后的课程数据
      */
     List<Map<String, Object>> getStudentCourseGroupedList(Long studentId);
+
+    /**
+     * 获取课程详情（学生端）
+     * @param courseId 课程ID
+     * @param studentId 学生用户ID（用于权限校验）
+     * @return 课程详情，不存在或无权限返回 null
+     */
+    Map<String, Object> getStudentCourseDetail(Long courseId, Long studentId);
 }

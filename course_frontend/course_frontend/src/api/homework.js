@@ -56,11 +56,27 @@ const getStudentHomeworkDetail = (params) => {
 
 /**
  * 学生上传附件并提交作业（学生端）
- * @param {object} data - 格式 { homeworkId: string, content: string, attachments: Array }  // homeworkId 为字符串雪花 ID
+ * @param {object} data - 格式 { homeworkId: string, content: string, attachments: Array }
  * @returns Promise 响应结果
  */
 const submitHomework = (data) => {
   return request('post', '/homework/student/submit', data)
+}
+
+/**
+ * 学生工作台：跨课程查询所有待办作业
+ * @returns Promise 响应结果
+ */
+const getStudentPendingHomeworks = () => {
+  return request('get', '/homework/student/pending', {})
+}
+
+/**
+ * 学生工作台统计：累计得分
+ * @returns Promise 响应结果（data 为数字）
+ */
+const getStudentTotalScoredScore = () => {
+  return request('get', '/homework/student/stats/score', {})
 }
 
 export {
@@ -70,5 +86,7 @@ export {
   gradeHomework,
   getStudentHomeworkList,
   getStudentHomeworkDetail,
-  submitHomework
+  submitHomework,
+  getStudentPendingHomeworks,
+  getStudentTotalScoredScore
 }

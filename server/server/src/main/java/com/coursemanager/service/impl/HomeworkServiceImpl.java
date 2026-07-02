@@ -8,6 +8,7 @@ import com.coursemanager.pojo.Homework;
 import com.coursemanager.pojo.HomeworkSubmit;
 import com.coursemanager.service.IHomeworkService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,6 +28,9 @@ public class HomeworkServiceImpl extends ServiceImpl<HomeworkMapper, Homework> i
 
     @Autowired
     private HomeworkSubmitMapper homeworkSubmitMapper;
+
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
 
     /** 用于将附件 Map 列表序列化为 JSON 字符串存储 */
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
@@ -126,18 +130,25 @@ public class HomeworkServiceImpl extends ServiceImpl<HomeworkMapper, Homework> i
             // 4.4 数字字段安全取值（SQL 里 COALESCE 保证了非 NULL，这里防御性再写一层）
             Integer gradedCount = getIntegerValue(rawRow.get("gradedCount"));
             Integer ungradedCount = getIntegerValue(rawRow.get("ungradedCount"));
-            Integer unsubmittedCount = getIntegerValue(rawRow.get("unsubmittedCount"));
+            // totalCount 由 SQL 子查询直接从 user_course 统计，非 NULL，防御性再取一次
+            Integer totalCount = getIntegerValue(rawRow.get("totalCount"));
 
             // 4.5 组装返回项（用 LinkedHashMap 保证字段顺序与文档示例一致）
             java.util.LinkedHashMap<String, Object> item = new java.util.LinkedHashMap<>();
             item.put("homeworkId", homeworkIdString);
             item.put("title", rawRow.get("title"));
+            item.put("description", rawRow.get("description"));
+            item.put("type", rawRow.get("type"));
             item.put("activityTag", rawRow.get("activityTag"));
+            item.put("totalScore", rawRow.get("totalScore"));
+            item.put("forbidLate", rawRow.get("forbidLate"));
             item.put("deadline", deadlineString);
             item.put("isOver", isOver);
             item.put("gradedCount", gradedCount);
             item.put("ungradedCount", ungradedCount);
-            item.put("unsubmittedCount", unsubmittedCount);
+            // submittedCount = 已批改 + 待批（status=2 + status=1，即所有已提交的人）
+            item.put("submittedCount", gradedCount + ungradedCount);
+            item.put("totalCount", totalCount);
 
             resultList.add(item);
         }
@@ -170,89 +181,86 @@ public class HomeworkServiceImpl extends ServiceImpl<HomeworkMapper, Homework> i
     }
 
     @Override
-    public List<Map<String, Object>> getSubmitList(Long homeworkId, Integer status, String studentName) {
-        // 1. 入参校验：homeworkId 为 null 直接返回空集合（不抛异常，避免前端传错导致 500）
+    public List<Map<String, Object>> getSubmitList(Long homeworkId, Integer filterStatus, String studentName) {
         if (homeworkId == null) {
             return new ArrayList<>();
         }
 
-        // 2. 把 studentName 的 null 标准化为 null（XML 里已经处理 ""，这里保持原值即可）
-        //    保留这个说明是为了让其他组员改代码时知道：null = 不筛，"xxx" = 模糊搜 xxx
-        String safeStudentName = studentName;
-        if (safeStudentName != null) {
-            safeStudentName = safeStudentName.trim();
-            if (safeStudentName.length() == 0) {
-                safeStudentName = null;
-            }
+        // 用 JdbcTemplate 原生 SQL 查询，绕过 MyBatis 的 resultType 列名映射问题
+        // 注意：SELECT 列表里加了 hs.content 和 hs.attachments，
+        //       这样教师点开"批阅抽屉"时能直接看到学生写的文字与提交的附件 URL
+        StringBuilder sql = new StringBuilder(
+            "SELECT hs.id AS submitId, u.name AS studentName, u.account AS studentAccount, " +
+            "hs.status AS submitStatus, hs.submit_time AS submitTime, " +
+            "hs.similarity, hs.word_count AS wordCount, hs.score, " +
+            "hs.content, hs.attachments " +
+            "FROM homework_submit hs " +
+            "INNER JOIN `user` u ON u.id = hs.student_id " +
+            "WHERE hs.homework_id = ?"
+        );
+        List<Object> args = new ArrayList<>();
+        args.add(homeworkId);
+        if (filterStatus != null) {
+            sql.append(" AND hs.status = ?");
+            args.add(filterStatus);
         }
-
-        // 3. 调用 Mapper 联表查询（user 表关联取学生姓名、学号）
-        List<Map<String, Object>> rawRowList = homeworkSubmitMapper.selectSubmitListForTeacher(
-                homeworkId, status, safeStudentName);
-        if (rawRowList == null || rawRowList.size() == 0) {
-            return new ArrayList<>();
+        if (studentName != null && !studentName.trim().isEmpty()) {
+            sql.append(" AND u.name LIKE ?");
+            args.add("%" + studentName.trim() + "%");
         }
+        sql.append(" ORDER BY hs.status ASC, hs.submit_time DESC");
 
-        // 4. 把数据库原始行转换为 API 文档要求的字段格式
+        List<Map<String, Object>> rows = jdbcTemplate.queryForList(sql.toString(), args.toArray());
+
+        // Jackson 单例复用：用于把 attachments JSON 字符串解析回 List
+        ObjectMapper attachmentMapper = new ObjectMapper();
+
+        SimpleDateFormat fmt = DEADLINE_FORMAT;
         List<Map<String, Object>> resultList = new ArrayList<>();
-        for (Map<String, Object> rawRow : rawRowList) {
-            // 4.1 submitId 转字符串返回，符合 B1_API.md "雪花 ID 加引号" 约定
-            Object submitIdObj = rawRow.get("submitId");
-            String submitIdString = submitIdObj == null ? null : submitIdObj.toString();
-
-            // 4.2 submitTime 从 Date 转成 yyyy-MM-dd HH:mm:ss 字符串
-            Object submitTimeObj = rawRow.get("submitTime");
-            String submitTimeString = null;
-            if (submitTimeObj instanceof Date) {
-                submitTimeString = DEADLINE_FORMAT.format((Date) submitTimeObj);
-            } else if (submitTimeObj != null) {
-                submitTimeString = submitTimeObj.toString();
-            }
-
-            // 4.3 status 是 Integer 数值，直接取出（可能为 null 表示没有此字段）
-            Object statusObj = rawRow.get("status");
-            Integer statusValue = null;
-            if (statusObj instanceof Number) {
-                statusValue = ((Number) statusObj).intValue();
-            } else if (statusObj != null) {
-                try { statusValue = Integer.parseInt(statusObj.toString()); } catch (Exception ignoreError) { statusValue = null; }
-            }
-
-            // 4.4 wordCount / score 是 Integer，可为 null（未批改时 score=null）
-            Integer wordCountValue = null;
-            Object wordCountObj = rawRow.get("wordCount");
-            if (wordCountObj instanceof Number) {
-                wordCountValue = ((Number) wordCountObj).intValue();
-            } else if (wordCountObj != null) {
-                try { wordCountValue = Integer.parseInt(wordCountObj.toString()); } catch (Exception ignoreError) { wordCountValue = null; }
-            }
-
-            Integer scoreValue = null;
-            Object scoreObj = rawRow.get("score");
-            if (scoreObj instanceof Number) {
-                scoreValue = ((Number) scoreObj).intValue();
-            } else if (scoreObj != null) {
-                try { scoreValue = Integer.parseInt(scoreObj.toString()); } catch (Exception ignoreError) { scoreValue = null; }
-            }
-
-            // 4.5 similarity 是 BigDecimal，保留原样返回（前端可能做百分比展示）
-            //    不用 toString 转换，让 Jackson 自动序列化
-            Object similarityValue = rawRow.get("similarity");
-
-            // 4.6 组装返回项（用 LinkedHashMap 保证字段顺序与文档示例一致）
+        for (Map<String, Object> row : rows) {
             java.util.LinkedHashMap<String, Object> item = new java.util.LinkedHashMap<>();
-            item.put("submitId", submitIdString);
-            item.put("studentName", rawRow.get("studentName"));
-            item.put("studentAccount", rawRow.get("studentAccount"));
+            item.put("submitId", String.valueOf(row.get("submitId")));
+            item.put("studentName", row.get("studentName"));
+            item.put("studentAccount", row.get("studentAccount"));
+            Object statusRaw = row.get("submitStatus");
+            Integer statusValue = null;
+            if (statusRaw instanceof Boolean) {
+                // 数据库 TINYINT(1) 被 JDBC 映射为 Boolean：true=1, false=0
+                statusValue = ((Boolean) statusRaw) ? 1 : 0;
+            } else if (statusRaw instanceof Number) {
+                statusValue = ((Number) statusRaw).intValue();
+            } else if (statusRaw != null) {
+                try { statusValue = Integer.parseInt(statusRaw.toString()); } catch (Exception ignore) {}
+            }
             item.put("status", statusValue);
-            item.put("submitTime", submitTimeString);
-            item.put("similarity", similarityValue);
-            item.put("wordCount", wordCountValue);
-            item.put("score", scoreValue);
+            item.put("submitTime", row.get("submitTime") == null ? null : row.get("submitTime").toString());
+            item.put("similarity", row.get("similarity"));
+            item.put("wordCount", row.get("wordCount"));
+            item.put("score", row.get("score"));
+
+            // 学生提交的文本内容（status=0 未交的记录 content 为 null，前端按 null 处理）
+            item.put("content", row.get("content"));
+
+            // 学生提交的附件 JSON：解析成 [{name,url},...] 列表给前端直接渲染
+            Object attachmentsRaw = row.get("attachments");
+            List<Map<String, String>> attachmentList = new ArrayList<>();
+            if (attachmentsRaw != null) {
+                String attachmentsJson = String.valueOf(attachmentsRaw);
+                if (!attachmentsJson.trim().isEmpty() && !"null".equals(attachmentsJson.trim())) {
+                    try {
+                        attachmentList = attachmentMapper.readValue(
+                                attachmentsJson,
+                                new com.fasterxml.jackson.core.type.TypeReference<List<Map<String, String>>>() {});
+                    } catch (Exception parseError) {
+                        // 解析失败时返回空列表，避免把脏数据抛到前端
+                        attachmentList = new ArrayList<>();
+                    }
+                }
+            }
+            item.put("attachments", attachmentList);
 
             resultList.add(item);
         }
-
         return resultList;
     }
 

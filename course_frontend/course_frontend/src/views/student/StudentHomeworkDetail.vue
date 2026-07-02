@@ -71,10 +71,24 @@
         <!-- 已提交状态 -->
         <div v-else class="submission-info">
           <div class="submission-header">
-            <el-tag :type="statusTagType(homeworkDetail.mySubmission.status)" size="small">
+            <!-- 打回重做：标签改为深红色+加粗，并且整个卡片边框变红，更醒目 -->
+            <el-tag
+              :type="statusTagType(homeworkDetail.mySubmission.status)"
+              :class="{ 'tag-danger-prominent': homeworkDetail.mySubmission.status === 3 }"
+              size="default"
+            >
               {{ statusText(homeworkDetail.mySubmission.status) }}
             </el-tag>
             <span class="submit-time">提交时间：{{ homeworkDetail.mySubmission.submitTime }}</span>
+          </div>
+
+          <!-- 打回重做时顶部横幅：醒目的红色警告 -->
+          <div v-if="homeworkDetail.mySubmission.status === 3" class="retry-banner">
+            <el-alert type="error" :closable="false" show-icon>
+              <template #title>
+                <span>老师打回此作业，请在截止时间前根据评语修改并<strong>重新提交</strong>。</span>
+              </template>
+            </el-alert>
           </div>
 
           <div class="submission-content">
@@ -92,11 +106,11 @@
             </div>
           </div>
 
-          <!-- 批改信息 -->
+          <!-- 批改信息（只有已批改状态才显示） -->
           <div v-if="homeworkDetail.mySubmission.status === 2" class="grade-info">
             <h5>批改结果</h5>
             <div class="score-display">
-              得分：<span class="score-number">{{ homeworkDetail.mySubmission.score }}</span>
+              得分：<span class="score-number">{{ homeworkDetail.mySubmission.score ?? '--' }}</span>
               <span class="score-total"> / {{ homeworkDetail.totalScore }}</span>
             </div>
             <div class="comment-display">
@@ -105,17 +119,9 @@
             </div>
           </div>
 
-          <!-- 打回重做提示 -->
-          <div v-if="homeworkDetail.mySubmission.status === 3" class="retry-hint">
-            <el-alert type="warning" :closable="false">
-              老师打回此作业，请根据评语修改后重新提交。
-            </el-alert>
-            <el-button
-              type="primary"
-              style="margin-top: 10px"
-              :disabled="isOver"
-              @click="showSubmitDialog = true"
-            >
+          <!-- 打回重做：截止前允许重新提交 -->
+          <div v-if="homeworkDetail.mySubmission.status === 3 && !isOver" class="retry-action">
+            <el-button type="danger" @click="showSubmitDialog = true">
               重新提交
             </el-button>
           </div>
@@ -166,26 +172,43 @@
     </div>
 
     <!-- 提交作业对话框 -->
-    <el-dialog v-model="showSubmitDialog" title="提交作业" width="500px">
-      <el-form ref="submitFormRef" :model="submitForm" label-width="80px">
+    <el-dialog v-model="showSubmitDialog" title="提交作业" width="640px">
+      <el-form ref="submitFormRef" :model="submitForm" label-width="90px">
         <el-form-item label="提交内容">
           <el-input
             v-model="submitForm.content"
             type="textarea"
-            :rows="5"
+            :rows="6"
             placeholder="请输入你的作业内容或答案"
           />
         </el-form-item>
         <el-form-item label="上传附件">
-          <!-- OSS 文件上传功能待接入（依赖后端文件服务，不在 B2 白名单内） -->
-          <!-- 临时处理：用 el-alert 给出明确提示，避免用户以为可以上传、实际上传了又被丢弃 -->
-          <el-alert
-            type="info"
-            :closable="false"
-            show-icon
-            title="附件上传功能开发中"
-            description="本版本暂不支持文件附件上传，请将所有作答内容写在「提交内容」文本框中；后续将接入 OSS 服务。"
-          />
+          <!--
+            el-upload 自定义上传：用 :http-request 拦截默认上传行为，
+            内部走 axios 复用 token，方便后端鉴权（虽然现在 SecurityConfig 是全放行）
+          -->
+          <el-upload
+            :file-list="fileList"
+            :on-success="handleUploadSuccess"
+            :on-error="handleUploadError"
+            :on-remove="handleUploadRemove"
+            :before-upload="handleBeforeUpload"
+            :http-request="customUploadRequest"
+            :show-file-list="true"
+            :drag="false"
+            :limit="5"
+            :on-exceed="handleExceed"
+          >
+            <el-button type="primary" :loading="uploading">
+              <el-icon><Plus /></el-icon>
+              <span>点击上传附件</span>
+            </el-button>
+            <template #tip>
+              <div class="el-upload__tip">
+                支持 PDF / Word / 图片 / 压缩包，单文件不超过 20MB，最多 5 个附件
+              </div>
+            </template>
+          </el-upload>
         </el-form-item>
       </el-form>
       <template #footer>
@@ -199,12 +222,13 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useRoute, useRouter } from 'vue-router'
-import { Clock, Loading } from '@element-plus/icons-vue'
+import { Clock, Loading, Plus } from '@element-plus/icons-vue'
 import { getStudentHomeworkDetail, submitHomework } from '@/api/homework'
 import { getCommentList, addComment } from '@/api/comment'
+import { uploadFile } from '@/api/upload'
 
 const route = useRoute()
 const router = useRouter()
@@ -239,8 +263,27 @@ const showSubmitDialog = ref(false)
 const submitting = ref(false)
 const submitFormRef = ref(null)
 
+// ★ 改造：提交表单新增附件数组（已上传成功的文件元数据列表）
+//  格式：[{ name: 原文件名, url: 后端返回的可访问 URL }]
 const submitForm = ref({
-  content: ''
+  content: '',
+  attachments: []
+})
+
+// ★ 新增：上传中的文件列表（el-upload 内部用）
+//  我们用它来显示文件名 + 上传进度 + 已上传成功的访问 URL
+const fileList = ref([])
+
+// ★ 新增：上传是否处理中（控制提交按钮的 loading）
+const uploading = ref(false)
+
+// 打开提交对话框时，把表单恢复到初始状态
+watch(showSubmitDialog, (newVisible) => {
+  if (newVisible) {
+    // 只在"打开"瞬间清，避免与正在编辑中的内容冲突
+    submitForm.value = { content: '', attachments: [] }
+    fileList.value = []
+  }
 })
 
 onMounted(() => {
@@ -278,10 +321,26 @@ const loadHomeworkDetail = async () => {
     if (res.data.code === 200) {
       homeworkDetail.value = res.data.data
     } else {
-      ElMessage.error(res.data.msg || '加载作业详情失败')
+      // 作业不存在：弹窗提示并跳回课程详情，避免用户卡在空白页
+      ElMessage.error(res.data.msg || '作业不存在或已删除')
+      setTimeout(() => {
+        if (courseId) {
+          router.replace(`/student/course/detail/${courseId}`)
+        } else {
+          router.replace('/student/courses')
+        }
+      }, 1200)
     }
   } catch (error) {
     console.error('加载作业详情异常:', error)
+    ElMessage.error('网络异常，无法加载作业详情')
+    setTimeout(() => {
+      if (courseId) {
+        router.replace(`/student/course/detail/${courseId}`)
+      } else {
+        router.replace('/student/courses')
+      }
+    }, 1200)
   } finally {
     loading.value = false
   }
@@ -332,14 +391,19 @@ const handleSubmitHomework = async () => {
     ElMessage.warning('请输入作业内容')
     return
   }
+  // 防止用户在上传未完成时点击提交（极少发生，但避免脏数据）
+  if (uploading.value) {
+    ElMessage.warning('附件正在上传中，请稍候')
+    return
+  }
   submitting.value = true
   try {
     // 2. homeworkId 是 19 位雪花 ID 的字符串（路由参数）；前端不会精度丢失
-    //    attachments 数组当前固定传空 []，OSS 上传组件接入后再传真实附件
+    //    attachments 直接传 fileList 里我们手动维护的 {name,url} 数组
     const res = await submitHomework({
       homeworkId,
       content: submitForm.value.content.trim(),
-      attachments: []
+      attachments: submitForm.value.attachments || []
     })
     if (res.data.code === 200) {
       ElMessage.success('作业提交成功')
@@ -357,13 +421,91 @@ const handleSubmitHomework = async () => {
   }
 }
 
+// ==================== 文件上传相关回调 ====================
+
+/**
+ * el-upload :before-upload：在文件真正上传前做客户端校验
+ * 不通过返回 false，el-upload 自动跳过这次上传
+ */
+const handleBeforeUpload = (file) => {
+  // 单文件 20MB 上限（与后端 UploadController.MAX_FILE_SIZE 一致）
+  const MAX = 20 * 1024 * 1024
+  if (file.size > MAX) {
+    ElMessage.error(`文件「${file.name}」超过 20MB，请压缩后再上传`)
+    return false
+  }
+  uploading.value = true
+  return true
+}
+
+/**
+ * el-upload :http-request：用我们的 axios 封装走 token，方便后期接入鉴权
+ */
+const customUploadRequest = async (options) => {
+  try {
+    const res = await uploadFile(options.file)
+    // 我们封装里的 res 即 axios 完整响应，结构是 { data: { code, msg, data: { fileUrl, ... } } }
+    if (res?.data?.code === 200 && res.data.data) {
+      // 把后端返回的文件元数据塞回 el-upload 的 onSuccess，让它接管 UI 状态
+      options.onSuccess(res.data.data)
+    } else {
+      options.onError(new Error(res?.data?.msg || '上传失败'))
+    }
+  } catch (err) {
+    options.onError(err)
+  }
+}
+
+/**
+ * el-upload :on-success：单个文件上传成功的回调
+ * 我们在这里把 {name, url} 写到 submitForm.attachments，确认提交时一起发给后端
+ */
+const handleUploadSuccess = (response, uploadFileObject) => {
+  uploading.value = false
+  if (response && response.fileUrl) {
+    submitForm.value.attachments.push({
+      name: response.originalName || uploadFileObject.name,
+      url: response.fileUrl
+    })
+    ElMessage.success(`附件「${uploadFileObject.name}」上传成功`)
+  } else {
+    ElMessage.error('附件上传失败：未返回文件地址')
+  }
+}
+
+/**
+ * el-upload :on-error：单个文件上传失败的回调
+ */
+const handleUploadError = (error) => {
+  uploading.value = false
+  console.error('附件上传失败:', error)
+  ElMessage.error('附件上传失败，请稍后重试')
+}
+
+/**
+ * el-upload :on-remove：用户在文件列表里点 X 删除已上传的附件
+ * 我们同步把它从 submitForm.attachments 里清掉，否则会出现"附件被删但提交时还发"
+ */
+const handleUploadRemove = (removedFile) => {
+  submitForm.value.attachments = submitForm.value.attachments.filter(
+    (att) => att.url !== removedFile.url
+  )
+}
+
+/**
+ * el-upload :on-exceed：超过 max 数量限制的提示
+ */
+const handleExceed = () => {
+  ElMessage.warning('最多只能上传 5 个附件')
+}
+
 // 状态文字
 const statusText = (status) => {
-  const map = { 0: '未交', 1: '已提交', 2: '已批改', 3: '打回重做' }
+  const map = { 0: '未交', 1: '待批阅', 2: '已批改', 3: '打回重做' }
   return map[status] || '未知'
 }
 
-// 状态标签颜色
+// 状态标签颜色：0=灰(未交), 1=橙(待批), 2=绿(已批), 3=红(打回)
 const statusTagType = (status) => {
   const map = { 0: 'info', 1: 'warning', 2: 'success', 3: 'danger' }
   return map[status] || 'info'
@@ -458,6 +600,24 @@ const statusTagType = (status) => {
   align-items: center;
   gap: 10px;
   margin-bottom: 15px;
+}
+
+/* 打回重做的标签：字体加粗，比默认 danger 更醒目 */
+.tag-danger-prominent {
+  font-weight: 700;
+  font-size: 14px;
+}
+
+/* 打回重做的红色警告横幅 */
+.retry-banner {
+  margin-bottom: 15px;
+}
+
+/* 打回重做的重新提交按钮 */
+.retry-action {
+  margin-top: 15px;
+  padding-top: 15px;
+  border-top: 1px dashed #fca5a5;
 }
 
 .submit-time {

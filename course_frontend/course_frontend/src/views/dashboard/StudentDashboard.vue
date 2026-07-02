@@ -45,7 +45,7 @@
           <div v-if="pendingHomeworks.length > 0" class="homework-list">
             <div
               v-for="hw in pendingHomeworks"
-              :key="hw.id"
+              :key="hw.homeworkId"
               class="homework-item"
               @click="$router.push(`/student/homework/${hw.homeworkId}`)"
             >
@@ -53,14 +53,16 @@
                 <div class="hw-title">{{ hw.title }}</div>
                 <div class="hw-meta">
                   <span class="hw-course">{{ hw.courseName }}</span>
-                  <span class="hw-deadline">
+                  <span class="hw-deadline" :class="deadlineClass(hw.deadline)">
                     <el-icon><Clock /></el-icon>
-                    {{ hw.deadline }}
+                    {{ hw.deadline || '无截止时间' }}
                   </span>
                 </div>
               </div>
               <div class="hw-status">
-                <el-tag type="warning" size="small">待提交</el-tag>
+                <el-tag :type="statusTagType(hw.status)" size="small">
+                  {{ statusText(hw.status) }}
+                </el-tag>
               </div>
             </div>
           </div>
@@ -86,14 +88,16 @@
               class="course-item"
               @click="$router.push(`/student/course/detail/${course.id}`)"
             >
-              <div class="course-cover" :style="{ backgroundColor: course.coverColor || '#2563eb' }">
+              <div class="course-cover" :style="{ background: course.coverColor || '#2563eb' }">
                 <span class="course-initial">{{ course.courseName?.charAt(0) || '课' }}</span>
               </div>
               <div class="course-info">
                 <div class="course-name">{{ course.courseName }}</div>
                 <div class="course-teacher">{{ course.teacherName }}</div>
               </div>
-              <el-tag size="small" type="success">{{ course.homeworkCount }} 作业</el-tag>
+              <el-tag size="small" :type="course.status === 1 ? 'success' : 'info'">
+                {{ course.status === 1 ? '进行中' : '已结束' }}
+              </el-tag>
             </div>
           </div>
           <el-empty v-else description="还没有加入课程" :image-size="60" />
@@ -104,11 +108,19 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { Reading, Notebook, Document, Trophy, Calendar, Clock } from '@element-plus/icons-vue'
 import { useUserStore } from '@/store/user'
+import { getStudentPendingHomeworks, getStudentTotalScoredScore } from '@/api/homework'
+import { getStudentCourseList } from '@/api/course'
 
 const userStore = useUserStore()
+
+onMounted(() => {
+  loadPendingHomeworks()
+  loadRecentCourses()
+  loadTotalScore()
+})
 
 // 根据当前小时返回问候语
 const greeting = computed(() => {
@@ -120,19 +132,133 @@ const greeting = computed(() => {
   return '晚上好'
 })
 
-// 顶部统计卡片（占位）
-const statCards = ref([
-  { label: '在修课程', value: '--', icon: Notebook, color: '#2563eb' },
-  { label: '待完成作业', value: '--', icon: Document, color: '#f59e0b' },
-  { label: '已获学分', value: '--', icon: Trophy, color: '#10b981' },
-  { label: '本周学习', value: '--', icon: Calendar, color: '#8b5cf6' }
+// 顶部统计卡片：在修课程 / 待完成作业 / 累计获取得分 / 已获学分
+const enrolledCourseCount = ref(0)
+const pendingHomeworkCount = ref(0)
+const totalScore = ref(0)
+const totalCredit = ref(0)
+
+const statCards = computed(() => [
+  { label: '在修课程', value: enrolledCourseCount.value, icon: Notebook, color: '#2563eb' },
+  { label: '待完成作业', value: pendingHomeworkCount.value, icon: Document, color: '#f59e0b' },
+  { label: '累计得分', value: totalScore.value, icon: Trophy, color: '#10b981' },
+  { label: '已获学分', value: totalCredit.value, icon: Calendar, color: '#8b5cf6' }
 ])
 
-// 待办作业（占位）
+// 待办作业
 const pendingHomeworks = ref([])
 
-// 最近课程（占位）
+// 加载待办作业
+const loadPendingHomeworks = async () => {
+  try {
+    const res = await getStudentPendingHomeworks()
+    if (res.data.code === 200) {
+      pendingHomeworks.value = res.data.data || []
+      // 顶部统计：直接取列表长度
+      pendingHomeworkCount.value = pendingHomeworks.value.length
+    }
+  } catch (error) {
+    console.error('加载待办作业异常:', error)
+  }
+}
+
+// 我的课程（按学期分组的所有课，最近学期优先展示）
 const recentCourses = ref([])
+
+// 课程封面色板（与 MyCourse.vue 一致）
+const gradientPalette = [
+  'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
+  'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+  'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+  'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)',
+  'linear-gradient(135deg, #ec4899 0%, #db2777 100%)',
+  'linear-gradient(135deg, #06b6d4 0%, #0891b2 100%)',
+  'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+  'linear-gradient(135deg, #14b8a6 0%, #0d9488 100%)'
+]
+
+// 根据课程 ID 稳定取一个渐变色
+const getCoverGradient = (courseId) => {
+  if (!courseId) return gradientPalette[0]
+  const idStr = String(courseId)
+  let sum = 0
+  for (let i = 0; i < idStr.length; i++) {
+    sum = sum + idStr.charCodeAt(i)
+  }
+  return gradientPalette[sum % gradientPalette.length]
+}
+
+// 加载我的课程列表（取所有学期下前几门）
+const loadRecentCourses = async () => {
+  const studentId = userStore.userId
+  if (!studentId) return
+  try {
+    const res = await getStudentCourseList(studentId)
+    if (res && res.data && res.data.code === 200 && Array.isArray(res.data.data)) {
+      // 接口返回 [{ term, courses: [...] }]，按学期降序后取最近的 5 门课程铺到面板
+      const groups = res.data.data.slice().sort((a, b) => {
+        const ta = (a.term || '').toString()
+        const tb = (b.term || '').toString()
+        return tb.localeCompare(ta)
+      })
+      const flatList = []
+      for (const group of groups) {
+        const courseList = (group && Array.isArray(group.courses)) ? group.courses : []
+        for (const c of courseList) {
+          // 给课程补上渐变色（API 没返回这个字段，前端自己算）
+          if (!c.coverColor) {
+            c.coverColor = getCoverGradient(c.id)
+          }
+          flatList.push(c)
+        }
+      }
+      recentCourses.value = flatList.slice(0, 5)
+
+      // 顶部统计：在修课程数 + 累计学分
+      enrolledCourseCount.value = flatList.length
+      let creditSum = 0
+      for (const c of flatList) {
+        const num = Number(c.credit)
+        if (!Number.isNaN(num)) creditSum += num
+      }
+      totalCredit.value = creditSum
+    }
+  } catch (error) {
+    console.error('加载我的课程异常:', error)
+  }
+}
+
+// 累计得分：直接走后端 /homework/student/stats/score 接口，一次 SUM 拿总分
+const loadTotalScore = async () => {
+  try {
+    const res = await getStudentTotalScoredScore()
+    if (res && res.data && res.data.code === 200) {
+      const scoreValue = Number(res.data.data)
+      totalScore.value = Number.isFinite(scoreValue) ? scoreValue : 0
+    }
+  } catch (error) {
+    console.error('加载累计得分异常:', error)
+    totalScore.value = 0
+  }
+}
+
+// 状态标签文字
+const statusText = (status) => {
+  const map = { 0: '未交', 1: '待批阅', 2: '已批改', 3: '打回重做' }
+  return map[status] || '未知'
+}
+
+// 状态标签颜色
+const statusTagType = (status) => {
+  const map = { 0: 'info', 1: 'warning', 2: 'success', 3: 'danger' }
+  return map[status] || 'info'
+}
+
+// 截止时间样式：已截止的显示红色
+const deadlineClass = (deadline) => {
+  if (!deadline) return ''
+  return new Date() > new Date(deadline) ? 'deadline-over' : ''
+}
 </script>
 
 <style scoped>
@@ -279,6 +405,10 @@ const recentCourses = ref([])
   display: flex;
   align-items: center;
   gap: 4px;
+}
+
+.hw-deadline.deadline-over {
+  color: #f56c6c;
 }
 
 /* ========== 课程列表 ========== */

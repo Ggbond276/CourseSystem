@@ -55,10 +55,22 @@ public class CourseAppendDto implements DtoTrans<Course> {
     private String className;
 
     /**
-     * 学年学期
+     * 学年学期（保留作为冗余字符串快照，由 Service 层根据 termId 自动填入）
+     * 如果前端只传 termId 不传 term，Service 会用 term.displayName 回填
      */
-    @NotBlank(message = "学年学期不能为空")
     private String term;
+
+    /**
+     * 学期ID（关联 term.id），由前端下拉选择得到
+     */
+    @JsonFormat(shape = JsonFormat.Shape.STRING)
+    private Long termId;
+
+    /**
+     * 学院ID（关联 department.id），由前端下拉选择得到
+     */
+    @JsonFormat(shape = JsonFormat.Shape.STRING)
+    private Long departmentId;
 
     /**
      * 学时

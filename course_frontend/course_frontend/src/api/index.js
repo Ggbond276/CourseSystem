@@ -9,24 +9,19 @@ const instance = axios.create({
   /**
    * 雪花 ID 精度修复（关键！）
    * Java 后端的雪花 ID 是 19 位 Long，超出 JS Number.MAX_SAFE_INTEGER（2^53 = 9007199254740992，16位）。
-   * Axios 默认用 JSON.parse 解析响应，19 位数字会被截断精度，导致 userId/courseId 末尾变 0。
-   * 通过 transformResponse 拦截，在 JSON.parse 之前用自定义 reviver 把所有超长数字转为字符串，
-   * 从根本上解决精度丢失问题。这样 store 里存的 userId 就是正确的，后续所有接口调用都不会受影响。
+   * 如果直接 JSON.parse，19 位数字会被截断精度（最后几位变 0），导致 userId/courseId/homeworkId 全部变成 ...0000。
+   *
+   * 错误做法：用 JSON.parse 的 reviver 函数 —— reviver 拿到的是已经被截断的 Number，无法恢复原始精度。
+   * 正确做法：在 JSON.parse 之前，先用正则把所有 17+ 位的连续数字包成带引号的字符串，让 JSON.parse 直接得到字符串。
    */
   transformResponse: [
     (data) => {
       if (typeof data !== 'string') return data
       try {
-        const MAX_SAFE = 9007199254740991
-        return JSON.parse(data, (key, value) => {
-          if (typeof value === 'number' && Number.isFinite(value)) {
-            if (Math.abs(value) > MAX_SAFE) {
-              // 精度已丢失：用字符串还原
-              return String(value)
-            }
-          }
-          return value
-        })
+        // 第一步：把后端返回的 JSON 字符串中所有 17+ 位数字（雪花 ID）用引号包起来，强制 JSON.parse 解析为字符串
+        // 17 位 = 16位安全 + 1位保护，覆盖所有 19 位雪花 ID
+        const safeData = data.replace(/:\s*(\d{17,})\b/g, ': "$1"')
+        return JSON.parse(safeData)
       } catch (e) {
         return data
       }

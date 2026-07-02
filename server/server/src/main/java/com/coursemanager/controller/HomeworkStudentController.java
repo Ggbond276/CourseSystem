@@ -157,6 +157,34 @@ public class HomeworkStudentController {
         return CommonResult.success(true, "作业提交成功");
     }
 
+    /**
+     * 学生工作台：跨课程查询所有待办作业（未交 / 已提交待批 / 打回重做）
+     * GET /homework/student/pending
+     * Headers（可选）：Authorization: Bearer xxx
+     * 响应：{ code, msg, data: [{ homeworkId, title, courseName, courseId, deadline, status }] }
+     */
+    @GetMapping("/pending")
+    public CommonResult<?> getPendingHomeworks(
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader) {
+        Long currentUserId = resolveCurrentStudentId(null, authorizationHeader);
+        List<Map<String, Object>> pendingList = studentHomeworkService.getStudentPendingHomeworks(currentUserId);
+        return CommonResult.success(pendingList, "获取成功");
+    }
+
+    /**
+     * 学生工作台统计：累计得分
+     * GET /homework/student/stats/score
+     * Headers（可选）：Authorization: Bearer xxx
+     * 响应：{ code, msg, data: 88 }   // data 为该学生所有已批改作业的总分
+     */
+    @GetMapping("/stats/score")
+    public CommonResult<?> getTotalScoredScore(
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader) {
+        Long currentUserId = resolveCurrentStudentId(null, authorizationHeader);
+        Integer totalScore = studentHomeworkService.getStudentTotalScoredScore(currentUserId);
+        return CommonResult.success(totalScore, "获取成功");
+    }
+
     // ---------- 内部请求类 ----------
 
     public static class SubmitHomeworkRequest {

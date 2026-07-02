@@ -95,4 +95,17 @@ public interface ICourseService extends IService<Course> {
      * @return 课程详情
      */
     Map<String, Object> getTeacherCourseDetail(Long courseId, Long teacherId);
+
+    /**
+     * 更新课程的可编辑信息（仅课程大纲与课程介绍）
+     * 用于 CourseDetail.vue 教师端的"编辑大纲/介绍"功能。
+     * 入参中 null 表示不更新该字段（保留数据库原值），避免误清空。
+     *
+     * @param courseId 课程ID
+     * @param teacherId 教师用户ID（用于权限校验）
+     * @param syllabus 课程大纲 JSON 字符串（null=不更新）
+     * @param intro   课程介绍长文本（null=不更新）
+     * @return 更新成功返回 true，失败返回 false
+     */
+    boolean updateCourseInfo(Long courseId, Long teacherId, String syllabus, String intro);
 }
